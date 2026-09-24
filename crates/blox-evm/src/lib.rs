@@ -2,6 +2,7 @@
 //! adapter-side response verification (BLOX.md §6.3, §9.4, §9.5, §10.4).
 
 pub mod caip;
+pub mod display;
 pub mod rpc;
 pub mod sign;
 pub mod tx;
@@ -40,6 +41,7 @@ pub(crate) fn hex_bytes(s: &str) -> Result<Vec<u8>> {
     hex::decode(h).map_err(Error::malformed)
 }
 
-pub(crate) fn to_hex(b: impl AsRef<[u8]>) -> String {
+/// `0x`-prefixed lowercase hex.
+pub fn to_hex(b: impl AsRef<[u8]>) -> String {
     format!("0x{}", hex::encode(b))
 }

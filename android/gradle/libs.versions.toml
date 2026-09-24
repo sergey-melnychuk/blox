@@ -1,0 +1,38 @@
+# Versions are a starting point; let Android Studio's upgrade assistant bump them.
+[versions]
+agp = "9.4.1"
+kotlin = "2.2.10"
+composeBom = "2025.09.00"
+activityCompose = "1.11.0"
+fragment = "1.8.9"
+lifecycle = "2.9.4"
+biometric = "1.1.0"
+camerax = "1.5.0"
+okhttp = "5.1.0"
+zxing = "3.5.3"
+jna = "5.17.0"
+coroutines = "1.10.2"
+
+[libraries]
+compose-bom = { group = "androidx.compose", name = "compose-bom", version.ref = "composeBom" }
+compose-ui = { group = "androidx.compose.ui", name = "ui" }
+compose-material3 = { group = "androidx.compose.material3", name = "material3" }
+compose-tooling-preview = { group = "androidx.compose.ui", name = "ui-tooling-preview" }
+compose-tooling = { group = "androidx.compose.ui", name = "ui-tooling" }
+activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "activityCompose" }
+fragment = { group = "androidx.fragment", name = "fragment-ktx", version.ref = "fragment" }
+lifecycle-runtime = { group = "androidx.lifecycle", name = "lifecycle-runtime-ktx", version.ref = "lifecycle" }
+lifecycle-compose = { group = "androidx.lifecycle", name = "lifecycle-runtime-compose", version.ref = "lifecycle" }
+biometric = { group = "androidx.biometric", name = "biometric", version.ref = "biometric" }
+camerax-camera2 = { group = "androidx.camera", name = "camera-camera2", version.ref = "camerax" }
+camerax-lifecycle = { group = "androidx.camera", name = "camera-lifecycle", version.ref = "camerax" }
+camerax-view = { group = "androidx.camera", name = "camera-view", version.ref = "camerax" }
+okhttp = { group = "com.squareup.okhttp3", name = "okhttp", version.ref = "okhttp" }
+okhttp-sse = { group = "com.squareup.okhttp3", name = "okhttp-sse", version.ref = "okhttp" }
+zxing-core = { group = "com.google.zxing", name = "core", version.ref = "zxing" }
+jna = { group = "net.java.dev.jna", name = "jna", version.ref = "jna" }
+coroutines-android = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-android", version.ref = "coroutines" }
+
+[plugins]
+android-application = { id = "com.android.application", version.ref = "agp" }
+kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }

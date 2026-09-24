@@ -551,10 +551,13 @@ impl Session {
   `armeabi-v7a` and `x86_64`. Kotlin handles the UI, the Android Keystore, storage and networking
   *(hint: OkHttp + okhttp-sse)*. The adapter and the app use the same decoder and envelope code,
   and so will the future iOS app.
-- **Permissions: `INTERNET` and `CAMERA` only.** No background work, no foreground service,
-  no notifications.
+- **Permissions: `INTERNET` and `CAMERA`**, plus two install-time "normal" permissions:
+  `USE_BIOMETRIC` (added by androidx.biometric) and `HIDE_OVERLAY_WINDOWS` (§10.6). No
+  background work, no foreground service, no notifications.
+- Application id `wtf.oxff.blox`.
 - The app has no Google Play Services dependency (no ML Kit, no FCM), so it can ship on
-  F-Droid. QR scanning uses CameraX with zxing-cpp *(hint)*.
+  F-Droid. QR scanning uses CameraX with ZXing core, with `ALSO_INVERTED` for the adapter's
+  light-on-dark QR codes *(hint)*.
 - Releases are reproducible builds signed with an offline release key. Each GitHub release
   publishes SHA-256 checksums and the signing certificate fingerprint. The README explains how
   to verify an APK (`apksigner verify --print-certs`). F-Droid and Play Store come later.
@@ -647,8 +650,8 @@ spender or operator address before the biometric prompt appears:
 - **Approve** opens the BiometricPrompt (§10.2). **Reject** is a single tap.
 
 ### 10.6 Screen and input protection
-- `FLAG_SECURE` on the approval, mnemonic and scan screens: no screenshots, no screen
-  recording, no thumbnails in Recents.
+- `FLAG_SECURE` on every screen (every screen shows a recovery phrase, a QR secret or a
+  request): no screenshots, no screen recording, no thumbnails in Recents.
 - `setHideOverlayWindows(true)` (API 31+) and `filterTouchesWhenObscured` on approval controls,
   to stop overlay tapjacking.
 - Session payloads come **only** from the in-app scanner. The app registers no intent filter
