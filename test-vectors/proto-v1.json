@@ -1,0 +1,54 @@
+{
+  "description": "Blox wire format v1 (BLOX.md §2.1, §4, §5.1). Binary values are base64url without padding unless noted.",
+  "envelopes": [
+    {
+      "envelope": "AQEy1mtAPEOvmKmr5AgpvHHVebdHmDUrJLN7vkd2dfrFUHWOCQt-Pr0pgNp4CU54KGlHMrJ_cz6djKC4csU4zchCHmxyzZ0Cj3cLRniwN9Ua4YKMqrjvtvhuWddHqTNyonnHhQFzE6y3G9sIKJaZrpeaYjK1WkCzO13S_cHRg4TFqtTrK4FHpJfjHRH0iZpuhM0hvVDdKazdQT62akixvnhbRlWayuNgr0raEc9lGdx3-jkVTKTCakFqXXhtBFhe2yDdyalXkVG88iCgCA0akj4KXJWNa0rw6NlXk5VAEYxwWBZI2ivvV2-4Z3s9X1_JzOAfXyV-tt7DOEqn2TtnhAHkzPH_zVVSkkndA1bk0u6RZcvfeWkT00rRnqTihYSc2kkWBhi1Y9VXYz5iTzJpvNjbKNoSdF23jPsW7L3js-bZnKlrbw82SfJJEjX1x7tAmnLJHLQfaQ27ljS5OuPVDtfSPNHZdb0Z1IgqbRQHKtRNyi6vv89683fa1u7dt3LHoSg0E7FnkvgiUspWUFTtcmwfOLCikDNLbe7ZXk8rMxan4Id3dfZ77KgDd_ussmllzlwYhKgDECbUFCBkdosjAPZd52cfWBj0XC5GjGP_H9ruIa8qwvhIayP0AJ6uLpNdZGn4MKp42pmFbk74yqHVMEx36AN5A2JEmOSEjD3dfnsrQmw0dzGtiCMd04VTNroTsA-m1vJFAHfJ7M72SvY6nxh8JssewppQ70EP-vXT0oGVsy3O7Dazwzx1sqaUY8rD-p_9B_EjW4JBgePzHL0CYdVvKLrchbwY5gAo7GACXGF6fT76NFgMvtHTyVk61SBb47ENp7Hs4tcSGbA8KAPKn1MDaky_KXBOIMVEgZThNIdf5RVtej9A2A3x9-AfFl_kCN1USESYFTENVYBf2krJgIz3M3j9DG3uX_4XVjlA81G4LwjavpYSTPepEyDqldtZG7bEXgINiXvbm0DSVS_MOShG7zz5ngWdNZJqPl_CQTiHTM47Zd4XXqN6bylO3ql_F_CoAxRYkUT6_e9hAOwofKRc0-FOvSxwHmqi0Wxjk5ASIj33ntjW3w6D-ahQ7g1qbA4MdjNdi42E-3qKtsVLV8I7isGHZkzSvT93icXqY7qezFRA0xhrRK5I7y7E9QuMcHXhY6XPoU9FFu_bOxfpPAkO_DCDRNcaLodlitjuqFC3HZG19oQx3FXNDECFUE1yqAMIRmbntMP6LFjcHyWSlokbe95jczpO_tABW3nEUGv6X4zrbO91DhJNwSg5CJemkPirQS0qbLqhfTElItE9iIywVNC42c_5NNwyGSKzcwidmlYYtlPWPfXJGwT5wJZZsLMGNHcdTrCRNT2s8c3qTNx8Xez7-r4K3oAjfa_jf6G7O0AJlIxTKfwPeqIcovkPK9fRhKNckO3mJlfA-ddXhUAP5i5lKt_9vl-fD6ElGx_Bf1PLXr3Yvof2169XY_Ni4-0",
+      "name": "hello keystore→adapter",
+      "plaintext_utf8": "{\"id\":\"oaGhoaGhoaGhoaGhoaGhoQ\",\"ts\":1760000000,\"type\":\"hello\",\"body\":{\"mk\":\"Zix5CGzMJQvl68VLHg6elMDW7YmvJqZC-ISntm43uVg\"}}",
+      "recipient_mailbox": "ETalGySalfKzroot9O0777JtWHJXeqCEn6xZvrjv5A8",
+      "sender": "keystore"
+    },
+    {
+      "envelope": "AQJ3YaY1Du0Ij4A2Am9C0meWw-Fno2O4sW7kSMw3i1Q9R9XU8baEm8JQ1sO2sYuqiy0mPlNpZTP6t_Ij0N3urOVhr7fFCBq1U_q-dBd1946mTDf3tcd-GusZGZq50F-TjyHbRwse2D9yTqK3mZhv2JkLadCXH9Rr3w7zU3_KDu0rM9W2dn1PvahUXjtSQU_uyDYPLnvz6uhJieCkkiJrCwhHJgVSjL1MMUsPGzd3VnMkz4iXOoL6FpWAUHeYUwqpsoN44ip8KOzH8J0Lo9-4u_EHZSYTVWAJCIvLY9Y06xNm9wXJOK-oCHBut7W-IpZ5CnN1svZUXY25VRQ9WMOzbeojzmCOBmI64KeNz15UU6wrZJuz1c0RNB4LmI6iSAksdfH-hg5kOTDyAax80ZIa3dJ4sxN6GzlaOBJ7O2BTlREs0Slcj0_Lx0r8_StXfNPQMAfxR6wsbesz4ubVAbTyx-84bOf6E2N4lJJsQ8woKIsnV1eSKEQMxaGp8HwoaiQ_2wNARPt3z1yr7spvE3qZ19G0L3VFs2pj8kObJYIeS_qzMeSz6ZhVlSSdvbhyvDr71SCPc6TxODIr74IwQ4TwpzXm0cazTALmNMyWIZtqzGozIUxRyFQjt34Pif515ZXOYbDW0-i7h_54wjYyR-r6eHsR8oDgaIndIk1q_FMR8mtIr1l3tX5DJ0Vn9HX5TOpFJk2HgKp_hVCPWSg0AO5JiX_wVlINtDCBtrNeXuV-7yNYhbO-oo7c4ToXryHinxQghOFYJuz6sIRCFQ-J2xKQoCk3ejJkHrXtqwSyHdCqhmIugZtjZL4KKQG0fQp9KaN7CGI0bBvsOCc1MLMLaUhmlWOc3jAK8RrIDCgWACJzGjC_qSeUud8G6eIVN0JSz5VlCq3ccI4JagpFrgj5wJxnr7xw0NTvDO-KAn6y3T8kRmtCh1UOUf7sxWKVDqx-QOlZzB3_2-YtAnO_wDOc4wnBlMpnQLLDrXxYTwGy-k2kmW0DG_-VpjRoubR4RgZrSk1VpiFdU6Z1xIpFTqI4eXqdDeyccJzaBnpvj81-GtPdkdUOKkjJCNda0CWOjpBo2dNl3g0a-ld7qs9ZXBLLHhhnseo3UATImWUG47T3uemzvsQxkALQ347uR9GZuxh7dXixNSU7JhE_2Rh3PQQ5_wen4d5YohXm4Z_Aw_RzJ6E7tLGq6gCJvX12vPc3cD6gsLWwtiuip3_JmNyNaAXrW00EjrHVfteyfkqIJLzZ9eRfhJIZaUy5EF8WJVnNqwjmK9b3dAHc-hxYLdGjQEaoO4CLl4ytbms33BvDrjSxR4Ux5x_MeEuM6yrZFTj8p8QsW5ih5cQWYIvWPYrNfSNx68JliB1etw0d_lV90IQdS-fReVL_MSNunlCPqUD9IT0UmIvP2-QaihNIPCwSoDHEkdU6oLzf",
+      "name": "message adapter→keystore",
+      "plaintext_utf8": "{\"id\":\"oqKioqKioqKioqKioqKiog\",\"ts\":1760000001,\"type\":\"close\",\"body\":{\"reason\":\"done\"}}",
+      "recipient_mailbox": "Zix5CGzMJQvl68VLHg6elMDW7YmvJqZC-ISntm43uVg",
+      "sender": "adapter"
+    }
+  ],
+  "keys": {
+    "adapter_ikm_utf8": "blox test adapter key",
+    "adapter_pk": "2fS8UTHT33a5wQiJFOvU48LzKSxozcEnEMlCHbBPQEE",
+    "keystore_ikm_utf8": "blox test keystore key",
+    "keystore_pk": "MtZrQDxDr5ipq-QIKbxx1Xm3R5g1KySze75HdnX6xVA",
+    "note": "RFC 9180 DeriveKeyPair(ikm) for DHKEM(X25519, HKDF-SHA256)",
+    "psk": "MzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzM"
+  },
+  "mailbox": [
+    {
+      "mailbox_id": "ETalGySalfKzroot9O0777JtWHJXeqCEn6xZvrjv5A8",
+      "read_secret": "ERERERERERERERERERERERERERERERERERERERERERE"
+    },
+    {
+      "mailbox_id": "Zix5CGzMJQvl68VLHg6elMDW7YmvJqZC-ISntm43uVg",
+      "read_secret": "IiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiI"
+    }
+  ],
+  "padding": [
+    {
+      "padded_len": 1024,
+      "padded_prefix_hex": "80",
+      "plaintext_hex": ""
+    },
+    {
+      "padded_len": 1024,
+      "padded_prefix_hex": "68656c6c6f80",
+      "plaintext_hex": "68656c6c6f"
+    },
+    {
+      "padded_len": 4096,
+      "plaintext_len": 1024
+    }
+  ],
+  "session_uri": "blox:s?p=eyJ2IjoxLCJyZWxheSI6Imh0dHBzOi8vYmxveC4weGZmLnd0ZiIsImFwayI6IjJmUzhVVEhUMzNhNXdRaUpGT3ZVNDhMektTeG96Y0VuRU1sQ0hiQlBRRUUiLCJtYSI6IkVUYWxHeVNhbGZLenJvb3Q5TzA3NzdKdFdISlhlcUNFbjZ4WnZyanY1QTgiLCJwc2siOiJNek16TXpNek16TXpNek16TXpNek16TXpNek16TXpNek16TXpNek16TXpNIiwibGFiZWwiOiJsYXB0b3AifQ"
+}

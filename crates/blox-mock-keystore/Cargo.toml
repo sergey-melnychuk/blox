@@ -1,0 +1,19 @@
+[package]
+name = "blox-mock-keystore"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+blox-client = { version = "0.1.0", path = "../blox-client" }
+blox-proto = { version = "0.1.0", path = "../blox-proto" }
+tokio = { version = "1.53.1", features = ["rt", "time"] }
+
+[dev-dependencies]
+axum = "0.8.9"
+blox-relay = { path = "../blox-relay" }
+serde_json = "1.0.151"
+tokio = { version = "1.53.1", features = ["full"] }
+tracing = "0.1.44"
+tracing-subscriber = "0.3.23"
