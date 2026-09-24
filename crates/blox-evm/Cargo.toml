@@ -1,0 +1,20 @@
+[package]
+name = "blox-evm"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+alloy-consensus = { version = "2.5", features = ["k256"] }
+alloy-dyn-abi = { version = "1.7.3", features = ["eip712"] }
+alloy-eips = { version = "2.5", features = ["serde"] }
+alloy-primitives = { version = "1.7.3", features = ["k256"] }
+alloy-rlp = "0.3.16"
+alloy-signer = "2.5"
+alloy-signer-local = { version = "2.5", features = ["mnemonic"] }
+blox-proto = { version = "0.1.0", path = "../blox-proto" }
+hex = "0.4.3"
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.151"
+thiserror = "2.0.21"
