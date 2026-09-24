@@ -1,12 +1,10 @@
 //! `blox rpc`: a local Ethereum JSON-RPC endpoint whose signing methods are
-//! served by a phone keystore over a Blox relay (BLOX.md §9).
+//! served by a phone keystore over a Blox relay (BLOX.md §9). The signing logic
+//! lives in `blox-adapter`; this crate adds the HTTP server and terminal output.
 
 pub mod qr;
-mod queue;
 mod server;
-mod upstream;
 
-pub use server::{Config, serve};
-pub use upstream::RpcError;
+pub use server::{Config, OnQr, serve};
 
-pub const DEFAULT_RELAY: &str = "https://relay.example.com";
+pub const DEFAULT_RELAY: &str = blox_proto::session::DEFAULT_RELAY;

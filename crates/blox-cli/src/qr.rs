@@ -29,7 +29,10 @@ mod tests {
     }
 
     fn uri(label: &str) -> String {
-        let (apk, ma) = (KeyPair::generate().public(), ReadSecret::generate().mailbox_id());
+        let (apk, ma) = (
+            KeyPair::generate().public(),
+            ReadSecret::generate().mailbox_id(),
+        );
         SessionPayload::new(DEFAULT_RELAY, apk, ma, Psk::generate(), label).to_uri()
     }
 

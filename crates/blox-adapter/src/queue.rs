@@ -10,21 +10,19 @@ use blox_evm::verify::{Verified, verify};
 use blox_proto::message::{CloseReason, RejectReason, SignRequest, SignResponse};
 use tokio::sync::{mpsc, oneshot};
 
-use crate::RpcError;
+use crate::{Event, Hooks, RpcError};
 
 /// Wait after the first job of a burst, so concurrent requests are ordered by nonce.
 const COALESCE: Duration = Duration::from_millis(200);
 /// Hard cap on a session's lifetime (§5.4).
 const MAX_SESSION: Duration = Duration::from_secs(15 * 60);
 
-pub type OnQr = Arc<dyn Fn(&str) + Send + Sync>;
-
 pub struct QueueConfig {
     pub relay: String,
     pub label: String,
     pub join_timeout: Duration,
     pub idle_timeout: Duration,
-    pub on_qr: OnQr,
+    pub hooks: Arc<dyn Hooks>,
 }
 
 struct Job {
@@ -34,8 +32,8 @@ struct Job {
     reply: oneshot::Sender<Result<Verified, RpcError>>,
 }
 
-/// Ordering key: `(from, nonce, arrival)`. Non-transaction jobs use nonce 0.
-type Key = (Address, u64, u64);
+/// Ordering key: `(chain, from, nonce, arrival)`. Non-transaction jobs use nonce 0.
+type Key = (u64, Address, u64, u64);
 
 #[derive(Clone)]
 pub struct Queue {
@@ -64,7 +62,7 @@ impl Queue {
 
     pub async fn submit(
         &self,
-        order: (Address, u64),
+        order: (u64, Address, u64),
         req: SignRequest,
         summary: String,
         timeout: Duration,
@@ -78,7 +76,7 @@ impl Queue {
             reply,
         };
         self.tx
-            .send(((order.0, order.1, seq), job))
+            .send(((order.0, order.1, order.2, seq), job))
             .map_err(|_| RpcError::internal("signer stopped"))?;
         rx.await.map_err(|_| RpcError::internal("signer stopped"))?
     }
@@ -140,20 +138,22 @@ impl Worker {
             }
             self.close(CloseReason::Timeout).await;
         }
-        let on_qr = self.cfg.on_qr.clone();
+        let hooks = self.cfg.hooks.clone();
         match self
             .signer
-            .connect(|uri| on_qr(uri), self.cfg.join_timeout)
+            .connect(|uri| hooks.show_qr(uri), self.cfg.join_timeout)
             .await
         {
             Ok(s) => {
-                eprintln!("✓ phone joined");
+                self.cfg.hooks.event(Event::Joined);
                 self.session = Some((s, Instant::now()));
                 true
             }
             Err(e) => {
                 let err = client_error(&e);
-                eprintln!("✗ {}", err.message);
+                self.cfg.hooks.event(Event::Failed {
+                    message: err.message.clone(),
+                });
                 for (_, job) in std::mem::take(&mut self.pending) {
                     let _ = job.reply.send(Err(err.clone()));
                 }
@@ -168,26 +168,34 @@ impl Worker {
             return;
         };
         let (session, _) = self.session.as_ref().expect("ensured");
-        eprintln!("→ sent: {}", job.summary);
+        self.cfg.hooks.event(Event::Sent {
+            summary: job.summary.clone(),
+        });
         let result = match session.sign(job.req.clone(), remaining).await {
             Ok(resp @ SignResponse::Approved { .. }) => match verify(&job.req, &resp) {
                 Ok(v) => {
-                    eprintln!("✓ signed");
+                    self.cfg.hooks.event(Event::Signed);
                     Ok(v)
                 }
                 Err(e) => {
-                    eprintln!("⚠ signer response failed verification ({e}); closing session");
+                    self.cfg.hooks.event(Event::VerificationFailed {
+                        detail: e.to_string(),
+                    });
                     self.close(CloseReason::Done).await;
                     Err(RpcError::internal("signer response failed verification"))
                 }
             },
             Ok(SignResponse::Rejected { reason }) => {
-                eprintln!("✗ rejected ({reason:?})");
+                self.cfg.hooks.event(Event::Rejected {
+                    reason: format!("{reason:?}"),
+                });
                 Err(rejected(reason))
             }
             Err(e) => {
                 let err = client_error(&e);
-                eprintln!("✗ {}", err.message);
+                self.cfg.hooks.event(Event::Failed {
+                    message: err.message.clone(),
+                });
                 if !matches!(e, ClientError::Timeout) {
                     self.session = None;
                 }
@@ -200,7 +208,7 @@ impl Worker {
     async fn close(&mut self, reason: CloseReason) {
         if let Some((s, _)) = self.session.take() {
             s.close_with(reason).await;
-            eprintln!("session closed");
+            self.cfg.hooks.event(Event::SessionClosed);
         }
     }
 }

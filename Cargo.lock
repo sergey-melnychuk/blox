@@ -1043,12 +1043,30 @@ dependencies = [
 ]
 
 [[package]]
+name = "blox-adapter"
+version = "0.1.0"
+dependencies = [
+ "alloy-consensus",
+ "alloy-eips",
+ "axum",
+ "blox-client",
+ "blox-evm",
+ "blox-mock-keystore",
+ "blox-proto",
+ "blox-relay",
+ "futures",
+ "reqwest",
+ "serde_json",
+ "tokio",
+]
+
+[[package]]
 name = "blox-cli"
 version = "0.1.0"
 dependencies = [
  "alloy-primitives",
  "axum",
- "blox-client",
+ "blox-adapter",
  "blox-evm",
  "blox-mock-keystore",
  "blox-proto",

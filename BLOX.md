@@ -533,21 +533,30 @@ The adapter caches `eth_chainId` from upstream at startup.
   expected and harmless.
 - Foundry polls `eth_getTransactionReceipt` after sending. That's normal forwarding.
 
-### 9.9 Library API *(hint)*
+### 9.9 Library API: `blox-adapter`
+Everything in §9.2–§9.5 lives in the `blox-adapter` crate, so any JSON-RPC proxy can embed
+it. `blox rpc` is a thin HTTP server (§9.7) plus terminal output around it.
+
 ```rust
-pub struct Signer { /* relay url, upstream-independent */ }
-impl Signer {
-    pub fn new(relay: Url, label: &str) -> Self;
-    /// Opens a session. `show_qr` receives the `BLOX:…` string; the caller renders it.
-    pub async fn connect(&self, show_qr: impl FnOnce(&str)) -> Result<Session, Error>;
-}
-impl Session {
-    pub async fn sign(&self, req: SignRequest) -> Result<SignResponse, Error>; // verified (§9.5)
-    pub async fn close(self);
+let adapter = Adapter::new(config, upstream, hooks);
+// For every JSON-RPC request the proxy receives:
+match adapter.handle(chain_id, method, &params, origin).await {
+    Some(result) => /* reply with result */,
+    None => /* not a signing method: forward upstream unchanged */,
 }
 ```
 
----
+- **`Upstream`:** `call(chain_id, method, params)`, used for filling and broadcasting. Routing
+  by chain is the embedder's job. `HttpUpstream` is the single-URL version.
+- **`Hooks`:**
+  - `show_qr(uri)`: display the session QR code (terminal, web UI, …). Required.
+  - `before_sign(Review)`: called with the **fully filled** `UnsignedTx` (or the message)
+    before anything goes to the phone. Returning an error vetoes the request and no session
+    is opened. This is where a simulator reviews the exact bytes that will be signed.
+  - `event(Event)`: progress (joined, sent, signed, rejected, verification failed, account
+    seen). The library itself prints nothing.
+- **One session and one queue for all chains.** Queue order is `(chain, from, nonce,
+  arrival)`, and nonces are tracked per `(chain, from)`.
 
 ## 10. Keystore App (Android)
 
@@ -800,7 +809,8 @@ blox/
 │   ├── blox-evm/              tx/EIP-712/personal_sign decoding, display model, danger flags, signing
 │   ├── blox-ffi/              UniFFI bindings over proto + evm for mobile
 │   ├── blox-relay/            axum relay (§8)          → binary `blox-relay`
-│   ├── blox-client/           Signer/Session library (§9.9)
+│   ├── blox-client/           relay client, Signer/Session
+│   ├── blox-adapter/          embeddable adapter core (§9.9)
 │   ├── blox-cli/              adapter binary `blox` (§9)
 │   └── blox-mock-keystore/    Rust keystore for tests (§13.1)
 ├── android/                   Kotlin/Compose keystore app (§10), Gradle build that runs cargo-ndk

@@ -1,0 +1,24 @@
+[package]
+name = "blox-adapter"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+blox-client = { version = "0.1.0", path = "../blox-client" }
+blox-evm = { version = "0.1.0", path = "../blox-evm" }
+blox-proto = { version = "0.1.0", path = "../blox-proto" }
+futures = "0.3.34"
+reqwest = { version = "0.13.5", features = ["json"] }
+serde_json = "1.0.151"
+tokio = { version = "1.53.1", features = ["rt", "sync", "time", "macros"] }
+
+[dev-dependencies]
+alloy-consensus = "2.5"
+alloy-eips = "2.5"
+axum = "0.8.9"
+blox-evm = { path = "../blox-evm" }
+blox-mock-keystore = { path = "../blox-mock-keystore" }
+blox-relay = { path = "../blox-relay" }
+tokio = { version = "1.53.1", features = ["full"] }
