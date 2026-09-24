@@ -22,7 +22,7 @@ impl Signer {
         }
     }
 
-    /// Creates a session, hands its `blox:s?p=…` string to `show_qr`, and waits
+    /// Creates a session, hands its `BLOX:…` string to `show_qr`, and waits
     /// up to `join_timeout` for a keystore to join.
     pub async fn connect(
         &self,

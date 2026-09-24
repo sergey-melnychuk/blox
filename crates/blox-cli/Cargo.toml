@@ -23,6 +23,7 @@ tracing-subscriber = { version = "0.3.23", features = ["env-filter"] }
 alloy-primitives = "1.7.3"
 axum = "0.8.9"
 blox-mock-keystore = { path = "../blox-mock-keystore" }
+blox-proto = { path = "../blox-proto" }
 blox-relay = { path = "../blox-relay" }
 reqwest = { version = "0.13.5", features = ["json"] }
 tokio = { version = "1.53.1", features = ["full"] }

@@ -225,20 +225,27 @@ The receiver strips trailing zeros and the `0x80` marker.
 ### 5.1 Adapter opens a session
 Triggered by the first signing call that arrives while no session is active (§9.3).
 1. Generate `(a_sk, a_pk)`, `read_secret_A` → `MA`, and `psk`.
-2. Build the session payload (JSON, base64url-encoded):
-   ```json
-   { "v": 1, "relay": "https://relay.example.com", "apk": "<a_pk>",
-     "ma": "<MA>", "psk": "<psk>", "label": "laptop" }
+2. Build the session payload (binary), then encode it as the QR content:
+   ```text
+   uri     = "BLOX:" base45(payload)                       (Base45: RFC 9285)
+   payload = version(1) ‖ apk(32) ‖ ma(32) ‖ psk(32)
+           ‖ relay_len(1) ‖ relay ‖ label_len(1) ‖ label
+   relay   = ""                → the default relay https://relay.example.com
+             "host[:port][/p]" → https://host[:port][/p]
+             "http://…"        → as written (debug / LAN only; release apps refuse it)
+   label   = UTF-8, at most 32 bytes (truncated on a character boundary)
    ```
-   `label` defaults to the hostname and can be set with `--label`.
-3. Print the QR code in the adapter's terminal (Unicode half-blocks, `qrcode` crate). Its
-   content is `blox:s?p=<payload>`. Under it, print the label, the relay host and
-   `Waiting for phone… (120 s)`. The QR code is meant **only for the app's own scanner** (§10.6).
+   `label` defaults to the hostname and can be set with `--label`. Base45 uses only QR's
+   alphanumeric characters, so the whole URI is encoded in alphanumeric mode: about 163
+   characters and a version-7 QR code (45×45 modules) for a typical label, at most version 8.
+3. Print the QR code in the adapter's terminal (Unicode half-blocks, `qrcode` crate). Under
+   it, print the label, the relay host and `Waiting for phone… (120 s)`. The QR code is meant
+   **only for the app's own scanner** (§10.6).
 4. Open the reader stream on `MA`. If no valid `hello` arrives within 120 s, fail the
    pending calls (-32603 `"no signer joined"`) and discard the session.
 
 ### 5.2 Keystore joins
-1. The user taps **Scan** and scans the QR code with the in-app scanner. The app accepts only `blox:s` payloads.
+1. The user taps **Scan** and scans the QR code with the in-app scanner. The app accepts only `BLOX:` payloads.
 2. Generate `(k_sk, k_pk)` and `read_secret_K` (→ `MK`). Open the reader stream on `MK`.
 3. Send `hello` (envelope type 0x01, `spk = k_pk`) to `MA` with body `{ "mk": "<MK>" }`.
    The keystore reveals no addresses at this point. The adapter learns the address only from
@@ -531,7 +538,7 @@ The adapter caches `eth_chainId` from upstream at startup.
 pub struct Signer { /* relay url, upstream-independent */ }
 impl Signer {
     pub fn new(relay: Url, label: &str) -> Self;
-    /// Opens a session. `show_qr` receives the `blox:s?p=…` string; the caller renders it.
+    /// Opens a session. `show_qr` receives the `BLOX:…` string; the caller renders it.
     pub async fn connect(&self, show_qr: impl FnOnce(&str)) -> Result<Session, Error>;
 }
 impl Session {

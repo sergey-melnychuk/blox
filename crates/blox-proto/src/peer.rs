@@ -65,7 +65,7 @@ impl AdapterSession {
         }
     }
 
-    /// The `blox:s?p=…` string to render as a QR code.
+    /// The `BLOX:…` string to render as a QR code.
     pub fn uri(&self) -> String {
         self.payload.to_uri()
     }

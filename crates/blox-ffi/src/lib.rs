@@ -222,7 +222,7 @@ pub struct Session {
 
 #[uniffi::export]
 impl Session {
-    /// Joins the session in a scanned `blox:s?p=…` QR payload. `accounts` are
+    /// Joins the session in a scanned `BLOX:…` QR payload. `accounts` are
     /// the keystore's EVM addresses; requests for other accounts are refused.
     #[uniffi::constructor]
     pub fn join(uri: String, accounts: Vec<String>) -> Result<Arc<Self>, FfiError> {

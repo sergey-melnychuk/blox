@@ -4,6 +4,7 @@
 //! produced by [`envelope::Envelope::to_bytes`].
 
 pub mod b64;
+pub mod base45;
 pub mod envelope;
 pub mod error;
 pub mod keys;

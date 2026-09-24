@@ -40,7 +40,7 @@ import com.google.zxing.qrcode.QRCodeReader
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicBoolean
 
-private const val PREFIX = "blox:s?p="
+private const val PREFIX = "BLOX:"
 
 /** In-app QR scanner: the only way a session payload enters the app (§10.6). */
 @Composable
