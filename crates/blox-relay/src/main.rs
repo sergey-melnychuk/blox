@@ -2,11 +2,11 @@ use std::net::SocketAddr;
 use std::time::Duration;
 
 use blox_relay::{AppState, Limits, router, sweeper};
-
-// BLOX_LOG sets the relay's log level (error|warn|info|debug|trace); dependencies stay silent.
 use clap::Parser;
 
-/// Blox relay: blind store-and-forward for encrypted signing messages.
+/// Blox relay: blind store-and-forward between connected parties (BLOX.md §8).
+///
+/// BLOX_LOG sets the relay's log level (error|warn|info|debug|trace); dependencies stay silent.
 #[derive(Parser)]
 #[command(version)]
 struct Args {
@@ -20,10 +20,26 @@ struct Args {
     max_envelope_bytes: usize,
     #[arg(long, env = "BLOX_MESSAGE_TTL_SECS", default_value_t = Limits::default().message_ttl.as_secs())]
     message_ttl_secs: u64,
-    #[arg(long, env = "BLOX_MAILBOX_MAX_MESSAGES", default_value_t = Limits::default().mailbox_max_messages)]
-    mailbox_max_messages: usize,
-    #[arg(long, env = "BLOX_MAILBOX_MAX_BYTES", default_value_t = Limits::default().mailbox_max_bytes)]
-    mailbox_max_bytes: usize,
+    #[arg(long, env = "BLOX_INBOX_MAX_MESSAGES", default_value_t = Limits::default().inbox_max_messages)]
+    inbox_max_messages: usize,
+    #[arg(long, env = "BLOX_INBOX_MAX_BYTES", default_value_t = Limits::default().inbox_max_bytes)]
+    inbox_max_bytes: usize,
+    #[arg(long, env = "BLOX_WRITER_MAX_MESSAGES", default_value_t = Limits::default().writer_max_messages)]
+    writer_max_messages: usize,
+    #[arg(long, env = "BLOX_INBOX_MAX_READERS", default_value_t = Limits::default().inbox_max_readers)]
+    inbox_max_readers: usize,
+    #[arg(long, env = "BLOX_CLOCK_SKEW_SECS", default_value_t = Limits::default().clock_skew_secs)]
+    clock_skew_secs: u64,
+    #[arg(long, env = "BLOX_MAX_TOKEN_LIFETIME_SECS", default_value_t = Limits::default().max_token_lifetime_secs)]
+    max_token_lifetime_secs: u64,
+    #[arg(long, env = "BLOX_TICKET_MAX_LIFETIME_SECS", default_value_t = Limits::default().ticket_max_lifetime_secs)]
+    ticket_max_lifetime_secs: u64,
+    #[arg(long, env = "BLOX_INBOX_MAX_TICKETS", default_value_t = Limits::default().inbox_max_tickets)]
+    inbox_max_tickets: usize,
+    #[arg(long, env = "BLOX_MAX_REVOCATIONS", default_value_t = Limits::default().max_revocations)]
+    max_revocations: usize,
+    #[arg(long, env = "BLOX_WRITER_WRITES_PER_MINUTE", default_value_t = Limits::default().writer_writes_per_minute)]
+    writer_writes_per_minute: u32,
     #[arg(long, env = "BLOX_IP_WRITES_PER_MINUTE", default_value_t = Limits::default().ip_writes_per_minute)]
     ip_writes_per_minute: u32,
     #[arg(long, env = "BLOX_IP_MAX_READERS", default_value_t = Limits::default().ip_max_readers)]
@@ -42,8 +58,16 @@ async fn main() -> std::io::Result<()> {
     let limits = Limits {
         max_envelope_bytes: a.max_envelope_bytes,
         message_ttl: Duration::from_secs(a.message_ttl_secs),
-        mailbox_max_messages: a.mailbox_max_messages,
-        mailbox_max_bytes: a.mailbox_max_bytes,
+        inbox_max_messages: a.inbox_max_messages,
+        inbox_max_bytes: a.inbox_max_bytes,
+        writer_max_messages: a.writer_max_messages,
+        inbox_max_readers: a.inbox_max_readers,
+        clock_skew_secs: a.clock_skew_secs,
+        max_token_lifetime_secs: a.max_token_lifetime_secs,
+        ticket_max_lifetime_secs: a.ticket_max_lifetime_secs,
+        inbox_max_tickets: a.inbox_max_tickets,
+        max_revocations: a.max_revocations,
+        writer_writes_per_minute: a.writer_writes_per_minute,
         ip_writes_per_minute: a.ip_writes_per_minute,
         ip_max_readers: a.ip_max_readers,
         global_max_bytes: a.global_max_bytes,

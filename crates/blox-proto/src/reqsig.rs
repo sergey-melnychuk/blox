@@ -56,7 +56,9 @@ pub fn parse(header: &str) -> Result<(u64, [u8; 64]), SigError> {
     Ok((ts, sig))
 }
 
-/// Verifies a request against `key` and the relay's clock `now`.
+/// Verifies a request against `key` and the relay's clock `now`, allowing `max_skew` seconds.
+///
+/// `path` is the API path starting at `/v1/`, without any base path of the relay URL.
 pub fn verify(
     header: &str,
     key: &VerifyingKey,
@@ -64,9 +66,10 @@ pub fn verify(
     path: &str,
     body: &[u8],
     now: u64,
+    max_skew: u64,
 ) -> Result<(), SigError> {
     let (ts, sig) = parse(header)?;
-    if ts.abs_diff(now) > MAX_SKEW_SECS {
+    if ts.abs_diff(now) > max_skew {
         return Err(SigError::Clock);
     }
     key.verify(&message(method, path, ts, body), &sig)
@@ -83,7 +86,7 @@ mod tests {
         let pk = k.public();
         let h = sign(&k, "post", "/v1/inbox/x", 1000, b"body");
         assert!(h.starts_with("Blox 1000."));
-        verify(&h, &pk, "POST", "/v1/inbox/x", b"body", 1030).unwrap();
+        verify(&h, &pk, "POST", "/v1/inbox/x", b"body", 1030, MAX_SKEW_SECS).unwrap();
         let other = SigningKey::generate().public();
         for (key, method, path, body, now, want) in [
             (
@@ -128,7 +131,10 @@ mod tests {
                 SigError::Signature,
             ),
         ] {
-            assert_eq!(verify(&h, key, method, path, body, now), Err(want));
+            assert_eq!(
+                verify(&h, key, method, path, body, now, MAX_SKEW_SECS),
+                Err(want)
+            );
         }
         for bad in [
             "",

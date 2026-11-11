@@ -286,8 +286,9 @@ token_id = SHA-256("blox/v1/token" ‖ body)
 Authorization: Blox <ts>.<sig, unpadded base64url>
 sig = Ed25519( "blox/v1/req" ‖ 0x00 ‖ method ‖ 0x00 ‖ path ‖ 0x00 ‖ ts(8, BE) ‖ SHA-256(body) )
 ```
-- `method` is the uppercase ASCII method. `path` is the request path without the host, for
-  example `/v1/inbox/<id>`; the API uses no query strings. `ts` is decimal in the header and
+- `method` is the uppercase ASCII method. `path` is the API path starting at `/v1/`, for
+  example `/v1/inbox/<id>`, without any base path in the relay URL (a proxy serving the relay
+  under a path strips it); the API uses no query strings. `ts` is decimal in the header and
   8 bytes big-endian in the signed bytes.
 - The relay rejects `|now − ts| > 60 s` with `401 clock` (§8.2). Clients sign with relay time (§4.8).
 - A request replayed within the window has no effect beyond a duplicate message, which the

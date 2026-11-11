@@ -39,7 +39,7 @@ listed below while they exist.
 - Delete `blox-adapter` and `blox-cli` (and the `cast`/`forge` tests). `TxRequest`/`Fill` stay
   in `blox-evm` for M4.
 
-### 3.3 Relay v1: inboxes with signature checks  `[ ]`
+### 3.3 Relay v1: inboxes with signature checks  `[x]`
 - Routes of §8.2: write (token or ticket), signed SSE read with several readers per inbox,
   signed ack, ticket registration, revocation, `/v1/info` with `now`.
 - Store: per-writer quota (4), readers per inbox (8), tickets (hash → inbox, expiry, used),
@@ -168,3 +168,14 @@ listed below while they exist.
   the body, so the half-signed and the countersigned token have the same id and one revocation
   covers both. `statement::iso8601` is a small civil-date conversion, to avoid a date crate.
 - **3.2:** `RUN.md` carries an "outdated" banner until 4.4 rewrites it.
+- **3.3:** The signed `path` is the API path from `/v1/` (spec §4.4 now says so), so a relay
+  served under a base path works when the proxy strips the prefix. Readers register for
+  wake-ups before reading the queue (`Notify::notified().enable()`), so a push between the
+  read and the wait is never missed with several readers. A ticket write is checked and queued
+  under one lock, and the ticket is marked used only if the message was queued. Revocation
+  entries are kept until the token's own expiry, capped at the max lifetime from now. Request
+  bodies over the limit get the JSON `too_large` error (the body extractor's rejection is
+  mapped). The relay's header check is local until 3.4 moves it into `blox-proto`.
+  `AppState::with_clock_offset` shifts the relay clock for client clock-skew tests.
+  The ignored `thousand_readers_latency` gate passes in release mode (about 1 s for 1,000
+  readers). The old mock-keystore session and log-leak tests are deleted; 3.6 replaces them.

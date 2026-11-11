@@ -1,4 +1,4 @@
-//! HTTP API (§8.2).
+//! HTTP API (BLOX.md §8.2).
 
 use std::collections::HashMap;
 use std::convert::Infallible;
@@ -6,37 +6,57 @@ use std::net::{IpAddr, SocketAddr};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
+use axum::extract::rejection::BytesRejection;
 use axum::extract::{ConnectInfo, DefaultBodyLimit, MatchedPath, Path, Request, State};
-use axum::http::{HeaderMap, StatusCode, header};
+use axum::http::{HeaderMap, HeaderName, Method, StatusCode, header};
 use axum::middleware::{self, Next};
 use axum::response::sse::{Event, KeepAlive, Sse};
 use axum::response::{IntoResponse, Response};
-use axum::routing::{delete, get};
+use axum::routing::{delete, get, post};
 use axum::{Json, Router};
+use blox_proto::api::{self, Accepted, ErrorBody, ErrorCode, TicketRegistration};
 use blox_proto::b64;
-use blox_proto::envelope::check_header;
-use blox_proto::mailbox::{MailboxId, ReadSecret};
+use blox_proto::ident::{InboxId, Ticket, VerifyingKey};
+use blox_proto::reqsig::{self, SigError};
+use blox_proto::token::Token;
 use bytes::Bytes;
 use futures::Stream;
 use serde_json::json;
 use tokio::sync::Notify;
+use tower_http::cors::{Any, CorsLayer};
 
 use crate::Limits;
-use crate::store::{PushError, Store};
+use crate::store::{Key, Queued, Store, Writer};
 
 #[derive(Clone)]
 pub struct AppState {
     store: Arc<Store>,
     limits: Limits,
     trust_proxy: bool,
-    ip: Arc<Mutex<IpState>>,
+    rates: Arc<Mutex<Rates>>,
+    /// Test hook: seconds added to the relay's clock.
+    clock_offset: i64,
 }
 
-/// Per-IP counters. Held in memory only, expired by the sweeper, never logged (§8.4).
+/// Rate counters. Held in memory only, expired by the sweeper, never logged (§8.4).
 #[derive(Default)]
-struct IpState {
-    writes: HashMap<IpAddr, (Instant, u32)>,
-    readers: HashMap<IpAddr, usize>,
+struct Rates {
+    ip_writes: HashMap<IpAddr, (Instant, u32)>,
+    writer_writes: HashMap<Key, (Instant, u32)>,
+    ip_readers: HashMap<IpAddr, usize>,
+}
+
+const MINUTE: Duration = Duration::from_secs(60);
+
+fn bump<K: std::hash::Hash + Eq>(map: &mut HashMap<K, (Instant, u32)>, k: K, max: u32) -> bool {
+    let now = Instant::now();
+    let (start, count) = map.entry(k).or_insert((now, 0));
+    if now.duration_since(*start) >= MINUTE {
+        *start = now;
+        *count = 0;
+    }
+    *count += 1;
+    *count <= max
 }
 
 impl AppState {
@@ -45,37 +65,60 @@ impl AppState {
             store: Arc::new(Store::new(limits.clone())),
             limits,
             trust_proxy,
-            ip: Arc::default(),
+            rates: Arc::default(),
+            clock_offset: 0,
         }
+    }
+
+    /// Shifts the relay's clock (tests of client clock handling).
+    pub fn with_clock_offset(mut self, secs: i64) -> Self {
+        self.clock_offset = secs;
+        self
     }
 
     pub fn store(&self) -> &Store {
         &self.store
     }
 
+    pub fn now(&self) -> u64 {
+        let wall = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .expect("clock after 1970")
+            .as_secs();
+        wall.saturating_add_signed(self.clock_offset)
+    }
+
     pub fn sweep(&self) {
         let now = Instant::now();
-        self.store.sweep(now);
-        let mut ip = self.ip.lock().unwrap();
-        ip.writes
-            .retain(|_, (start, _)| now.duration_since(*start) < Duration::from_secs(60));
+        self.store.sweep(now, self.now());
+        let mut r = self.rates.lock().unwrap();
+        r.ip_writes
+            .retain(|_, (start, _)| now.duration_since(*start) < MINUTE);
+        r.writer_writes
+            .retain(|_, (start, _)| now.duration_since(*start) < MINUTE);
     }
 
-    fn allow_write(&self, addr: IpAddr) -> bool {
-        let now = Instant::now();
-        let mut ip = self.ip.lock().unwrap();
-        let (start, count) = ip.writes.entry(addr).or_insert((now, 0));
-        if now.duration_since(*start) >= Duration::from_secs(60) {
-            *start = now;
-            *count = 0;
-        }
-        *count += 1;
-        *count <= self.limits.ip_writes_per_minute
+    fn allow_ip_write(&self, ip: IpAddr) -> Result<(), ApiError> {
+        let mut r = self.rates.lock().unwrap();
+        bump(&mut r.ip_writes, ip, self.limits.ip_writes_per_minute)
+            .then_some(())
+            .ok_or(ApiError(ErrorCode::RateLimited))
     }
 
-    fn acquire_reader(&self, addr: IpAddr) -> bool {
-        let mut ip = self.ip.lock().unwrap();
-        let n = ip.readers.entry(addr).or_default();
+    fn allow_writer(&self, writer: &VerifyingKey) -> Result<(), ApiError> {
+        let mut r = self.rates.lock().unwrap();
+        bump(
+            &mut r.writer_writes,
+            *writer.as_bytes(),
+            self.limits.writer_writes_per_minute,
+        )
+        .then_some(())
+        .ok_or(ApiError(ErrorCode::RateLimited))
+    }
+
+    fn acquire_ip_reader(&self, ip: IpAddr) -> bool {
+        let mut r = self.rates.lock().unwrap();
+        let n = r.ip_readers.entry(ip).or_default();
         if *n >= self.limits.ip_max_readers {
             return false;
         }
@@ -83,12 +126,12 @@ impl AppState {
         true
     }
 
-    fn release_reader(&self, addr: IpAddr) {
-        let mut ip = self.ip.lock().unwrap();
-        if let Some(n) = ip.readers.get_mut(&addr) {
+    fn release_ip_reader(&self, ip: IpAddr) {
+        let mut r = self.rates.lock().unwrap();
+        if let Some(n) = r.ip_readers.get_mut(&ip) {
             *n -= 1;
             if *n == 0 {
-                ip.readers.remove(&addr);
+                r.ip_readers.remove(&ip);
             }
         }
     }
@@ -111,17 +154,30 @@ impl AppState {
 
 pub fn router(state: AppState) -> Router {
     let max = state.limits.max_envelope_bytes;
+    let cors = CorsLayer::new()
+        .allow_origin(Any)
+        .allow_methods([Method::GET, Method::POST, Method::DELETE])
+        .allow_headers([
+            header::AUTHORIZATION,
+            header::CONTENT_TYPE,
+            HeaderName::from_static(api::HEADER_TOKEN),
+            HeaderName::from_static(api::HEADER_TICKET),
+        ])
+        .max_age(Duration::from_secs(86400));
     Router::new()
-        .route("/v1/m/{mailbox_id}", get(read).post(write))
-        .route("/v1/m/{mailbox_id}/{seq}", delete(ack))
+        .route("/v1/inbox/{id}", get(read).post(write))
+        .route("/v1/inbox/{id}/{seq}", delete(ack))
+        .route("/v1/inbox/{id}/tickets", post(register_ticket))
+        .route("/v1/revoke", post(revoke))
         .route("/v1/info", get(info))
         .route("/health", get(|| async { Json(json!({ "ok": true })) }))
         .layer(DefaultBodyLimit::max(max))
+        .layer(cors)
         .layer(middleware::from_fn(access_log))
         .with_state(state)
 }
 
-/// Logs the route template only — never the concrete path, which holds a mailbox id (§8.5).
+/// Logs the route template only — never the concrete path, which holds an inbox id (§8.5).
 async fn access_log(req: Request, next: Next) -> Response {
     let method = req.method().clone();
     let route = req
@@ -135,32 +191,66 @@ async fn access_log(req: Request, next: Next) -> Response {
     res
 }
 
-/// Error response: `{"error": "..."}` with a status code.
-struct ApiError(StatusCode, &'static str);
+/// Error response: `{"error": code}` with the code's status (§8.2).
+#[derive(Debug)]
+struct ApiError(ErrorCode);
 
 impl IntoResponse for ApiError {
     fn into_response(self) -> Response {
-        (self.0, Json(json!({ "error": self.1 }))).into_response()
+        let status = StatusCode::from_u16(self.0.status()).expect("valid status");
+        (status, Json(ErrorBody { error: self.0 })).into_response()
+    }
+}
+
+impl From<SigError> for ApiError {
+    fn from(e: SigError) -> Self {
+        ApiError(match e {
+            SigError::Clock => ErrorCode::Clock,
+            SigError::Malformed | SigError::Signature => ErrorCode::Unauthorized,
+        })
     }
 }
 
 type ApiResult = Result<Response, ApiError>;
 
-fn parse_id(s: &str) -> Result<MailboxId, ApiError> {
-    MailboxId::parse(s).map_err(|_| ApiError(StatusCode::BAD_REQUEST, "malformed mailbox id"))
+fn parse_inbox(s: &str) -> Result<InboxId, ApiError> {
+    InboxId::parse(s).map_err(|_| ApiError(ErrorCode::Malformed))
 }
 
-fn authorize(id: &MailboxId, headers: &HeaderMap) -> Result<(), ApiError> {
-    const UNAUTHORIZED: ApiError = ApiError(StatusCode::UNAUTHORIZED, "unauthorized");
-    let token = headers
-        .get(header::AUTHORIZATION)
-        .and_then(|v| v.to_str().ok())
-        .and_then(|v| v.strip_prefix("Bearer "))
-        .ok_or(UNAUTHORIZED)?;
-    let secret = ReadSecret::parse(token).map_err(|_| UNAUTHORIZED)?;
-    if secret.mailbox_id() != *id {
-        return Err(UNAUTHORIZED);
+/// The envelope header the relay may look at (§4.5): version, type and minimum length.
+/// Returns the type byte.
+fn check_envelope(bytes: &[u8]) -> Result<u8, ApiError> {
+    const MIN: usize = 2 + 32 + 32 + 16;
+    if bytes.len() < MIN || bytes[0] != blox_proto::VERSION || !matches!(bytes[1], 1 | 2) {
+        return Err(ApiError(ErrorCode::Malformed));
     }
+    Ok(bytes[1])
+}
+
+fn header<'a>(headers: &'a HeaderMap, name: &str) -> Option<&'a str> {
+    headers.get(name).and_then(|v| v.to_str().ok())
+}
+
+/// Checks the request signature against `key` with the relay's clock.
+fn check_sig(
+    state: &AppState,
+    headers: &HeaderMap,
+    key: &VerifyingKey,
+    method: &str,
+    path: &str,
+    body: &[u8],
+) -> Result<(), ApiError> {
+    let auth =
+        header(headers, header::AUTHORIZATION.as_str()).ok_or(ApiError(ErrorCode::Unauthorized))?;
+    reqsig::verify(
+        auth,
+        key,
+        method,
+        path,
+        body,
+        state.now(),
+        state.limits.clock_skew_secs,
+    )?;
     Ok(())
 }
 
@@ -169,23 +259,124 @@ async fn write(
     ConnectInfo(peer): ConnectInfo<SocketAddr>,
     Path(id): Path<String>,
     headers: HeaderMap,
-    body: Bytes,
+    body: Result<Bytes, BytesRejection>,
 ) -> ApiResult {
-    let id = parse_id(&id)?;
-    if check_header(&body).is_err() {
-        return Err(ApiError(
-            StatusCode::BAD_REQUEST,
-            "malformed envelope header",
-        ));
+    let inbox = parse_inbox(&id)?;
+    let body = body.map_err(|_| ApiError(ErrorCode::TooLarge))?;
+    let kind = check_envelope(&body)?;
+    state.allow_ip_write(state.client_ip(peer, &headers))?;
+    let now = state.now();
+    let seq = if let Some(ticket) = header(&headers, api::HEADER_TICKET) {
+        let ticket = Ticket::parse(ticket).map_err(|_| ApiError(ErrorCode::Malformed))?;
+        if kind != 1 {
+            return Err(ApiError(ErrorCode::Malformed));
+        }
+        state
+            .store
+            .push_with_ticket(*inbox.as_bytes(), ticket.hash(), body, now)
+    } else {
+        let token = header(&headers, api::HEADER_TOKEN).ok_or(ApiError(ErrorCode::Unauthorized))?;
+        let token = Token::from_header(token).map_err(|_| ApiError(ErrorCode::Malformed))?;
+        let party = token
+            .body
+            .party_of(&inbox)
+            .ok_or(ApiError(ErrorCode::Unauthorized))?;
+        token
+            .verify(party)
+            .map_err(|_| ApiError(ErrorCode::Unauthorized))?;
+        let writer = token.body.keys(party.other()).sig;
+        check_sig(
+            &state,
+            &headers,
+            &writer,
+            "POST",
+            &format!("/v1/inbox/{id}"),
+            &body,
+        )?;
+        check_token_times(&state, &token, now)?;
+        if state.store.is_revoked(&token.id()) {
+            return Err(ApiError(ErrorCode::Revoked));
+        }
+        state.allow_writer(&writer)?;
+        state
+            .store
+            .push(*inbox.as_bytes(), body, Writer::Key(*writer.as_bytes()))
     }
-    if !state.allow_write(state.client_ip(peer, &headers)) {
-        return Err(ApiError(StatusCode::TOO_MANY_REQUESTS, "rate limited"));
+    .map_err(ApiError)?;
+    Ok((StatusCode::ACCEPTED, Json(Accepted { seq })).into_response())
+}
+
+fn check_token_times(state: &AppState, token: &Token, now: u64) -> Result<(), ApiError> {
+    let b = &token.body;
+    if b.expires_at <= now {
+        return Err(ApiError(ErrorCode::Expired));
     }
-    match state.store.push(id, body) {
-        Ok(seq) => Ok((StatusCode::ACCEPTED, Json(json!({ "seq": seq }))).into_response()),
-        Err(PushError::MailboxFull) => Err(ApiError(StatusCode::TOO_MANY_REQUESTS, "mailbox full")),
-        Err(PushError::RelayFull) => Err(ApiError(StatusCode::SERVICE_UNAVAILABLE, "relay full")),
+    if b.issued_at > now + state.limits.clock_skew_secs
+        || b.expires_at < b.issued_at
+        || b.expires_at - b.issued_at > state.limits.max_token_lifetime_secs
+    {
+        return Err(ApiError(ErrorCode::Unauthorized));
     }
+    Ok(())
+}
+
+async fn register_ticket(
+    State(state): State<AppState>,
+    ConnectInfo(peer): ConnectInfo<SocketAddr>,
+    Path(id): Path<String>,
+    headers: HeaderMap,
+    body: Result<Bytes, BytesRejection>,
+) -> ApiResult {
+    let inbox = parse_inbox(&id)?;
+    let body = body.map_err(|_| ApiError(ErrorCode::TooLarge))?;
+    check_sig(
+        &state,
+        &headers,
+        &inbox,
+        "POST",
+        &format!("/v1/inbox/{id}/tickets"),
+        &body,
+    )?;
+    let reg: TicketRegistration =
+        serde_json::from_slice(&body).map_err(|_| ApiError(ErrorCode::Malformed))?;
+    let now = state.now();
+    if reg.expires_at <= now || reg.expires_at > now + state.limits.ticket_max_lifetime_secs {
+        return Err(ApiError(ErrorCode::Malformed));
+    }
+    state.allow_ip_write(state.client_ip(peer, &headers))?;
+    state
+        .store
+        .register_ticket(*inbox.as_bytes(), reg.ticket_hash, reg.expires_at, now)
+        .map_err(ApiError)?;
+    Ok(StatusCode::NO_CONTENT.into_response())
+}
+
+async fn revoke(
+    State(state): State<AppState>,
+    ConnectInfo(peer): ConnectInfo<SocketAddr>,
+    headers: HeaderMap,
+    body: Result<Bytes, BytesRejection>,
+) -> ApiResult {
+    let body = body.map_err(|_| ApiError(ErrorCode::TooLarge))?;
+    let token = header(&headers, api::HEADER_TOKEN).ok_or(ApiError(ErrorCode::Unauthorized))?;
+    let token = Token::from_header(token).map_err(|_| ApiError(ErrorCode::Malformed))?;
+    // Either party named in the token may revoke it; the token's own signatures aren't needed.
+    let signed_by_party = [token.body.requester.sig, token.body.keystore.sig]
+        .iter()
+        .map(|k| check_sig(&state, &headers, k, "POST", "/v1/revoke", &body))
+        .find(|r| !matches!(r, Err(ApiError(ErrorCode::Unauthorized))))
+        .unwrap_or(Err(ApiError(ErrorCode::Unauthorized)));
+    signed_by_party?;
+    state.allow_ip_write(state.client_ip(peer, &headers))?;
+    let now = state.now();
+    if token.body.expires_at > now {
+        let until = token
+            .body
+            .expires_at
+            .min(now + state.limits.max_token_lifetime_secs);
+        state.store.revoke(token.id(), until).map_err(ApiError)?;
+    }
+    Ok(StatusCode::NO_CONTENT.into_response())
 }
 
 async fn ack(
@@ -193,14 +384,26 @@ async fn ack(
     Path((id, seq)): Path<(String, u64)>,
     headers: HeaderMap,
 ) -> ApiResult {
-    let id = parse_id(&id)?;
-    authorize(&id, &headers)?;
-    state.store.ack(&id, seq);
+    let inbox = parse_inbox(&id)?;
+    check_sig(
+        &state,
+        &headers,
+        &inbox,
+        "DELETE",
+        &format!("/v1/inbox/{id}/{seq}"),
+        b"",
+    )?;
+    state.store.ack(inbox.as_bytes(), seq);
     Ok(StatusCode::NO_CONTENT.into_response())
 }
 
 async fn info(State(state): State<AppState>) -> Response {
-    Json(json!({ "version": env!("CARGO_PKG_VERSION"), "limits": state.limits })).into_response()
+    Json(json!({
+        "version": env!("CARGO_PKG_VERSION"),
+        "now": state.now(),
+        "limits": state.limits,
+    }))
+    .into_response()
 }
 
 async fn read(
@@ -209,17 +412,29 @@ async fn read(
     Path(id): Path<String>,
     headers: HeaderMap,
 ) -> ApiResult {
-    let id = parse_id(&id)?;
-    authorize(&id, &headers)?;
+    let inbox = parse_inbox(&id)?;
+    check_sig(
+        &state,
+        &headers,
+        &inbox,
+        "GET",
+        &format!("/v1/inbox/{id}"),
+        b"",
+    )?;
     let ip = state.client_ip(peer, &headers);
-    if !state.acquire_reader(ip) {
-        return Err(ApiError(StatusCode::TOO_MANY_REQUESTS, "too many readers"));
+    if !state.acquire_ip_reader(ip) {
+        return Err(ApiError(ErrorCode::ReadersFull));
     }
-    let (generation, notify) = state.store.attach_reader(id);
+    let notify = match state.store.attach_reader(*inbox.as_bytes()) {
+        Ok(n) => n,
+        Err(e) => {
+            state.release_ip_reader(ip);
+            return Err(ApiError(e));
+        }
+    };
     let reader = Reader {
         state,
-        id,
-        generation,
+        inbox: *inbox.as_bytes(),
         ip,
         notify,
         cursor: None,
@@ -233,21 +448,20 @@ async fn read(
         .into_response())
 }
 
-/// One SSE reader. Dropping it (client gone, or superseded) releases its slot.
+/// One SSE reader. Dropping it (the client went away) releases its slots.
 struct Reader {
     state: AppState,
-    id: MailboxId,
-    generation: u64,
+    inbox: Key,
     ip: IpAddr,
     notify: Arc<Notify>,
     cursor: Option<u64>,
-    batch: Vec<crate::store::Queued>,
+    batch: Vec<Queued>,
 }
 
 impl Drop for Reader {
     fn drop(&mut self) {
-        self.state.store.detach_reader(&self.id, self.generation);
-        self.state.release_reader(self.ip);
+        self.state.store.detach_reader(&self.inbox);
+        self.state.release_ip_reader(self.ip);
     }
 }
 
@@ -256,17 +470,22 @@ fn stream(reader: Reader) -> impl Stream<Item = Result<Event, Infallible>> {
         loop {
             if let Some(q) = r.batch.pop() {
                 r.cursor = Some(q.seq);
-                let data = json!({
-                    "seq": q.seq,
-                    "body": b64::encode(&q.body),
-                    "age_ms": q.enqueued.elapsed().as_millis() as u64,
-                });
-                return Some((Ok(Event::default().event("msg").data(data.to_string())), r));
+                let data = api::Event {
+                    seq: q.seq,
+                    body: b64::encode(&q.body),
+                    age_ms: q.enqueued.elapsed().as_millis() as u64,
+                };
+                let data = serde_json::to_string(&data).expect("event serializes");
+                return Some((Ok(Event::default().event("msg").data(data)), r));
             }
-            // Superseded by a newer reader: end this stream.
-            let mut pending = r.state.store.pending(&r.id, r.generation, r.cursor)?;
+            // Register for wake-ups before looking, so a push in between isn't missed.
+            let notify = r.notify.clone();
+            let notified = notify.notified();
+            tokio::pin!(notified);
+            notified.as_mut().enable();
+            let mut pending = r.state.store.pending(&r.inbox, r.cursor);
             if pending.is_empty() {
-                r.notify.notified().await;
+                notified.await;
                 continue;
             }
             pending.reverse(); // pop() yields ascending seq

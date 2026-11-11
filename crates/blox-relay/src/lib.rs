@@ -1,7 +1,7 @@
-//! Blox relay (BLOX.md §8): a blind store-and-forward service for mailboxes.
+//! Blox relay (BLOX.md §8): blind store-and-forward between connected parties.
 //!
-//! The relay never parses anything beyond the envelope header and never logs
-//! mailbox ids, secrets, bodies or client addresses.
+//! The relay checks tokens, tickets and request signatures, looks at nothing in an
+//! envelope beyond its header, and never logs inbox ids, tokens, bodies or client addresses.
 
 mod http;
 mod limits;
@@ -9,7 +9,7 @@ mod store;
 
 pub use http::{AppState, router};
 pub use limits::Limits;
-pub use store::Store;
+pub use store::{Stats, Store};
 
 /// Log filter for the relay: only the relay's own target, at `level`.
 ///
@@ -20,7 +20,7 @@ pub fn log_filter(level: &str) -> tracing_subscriber::EnvFilter {
     tracing_subscriber::EnvFilter::new(format!("off,blox_relay={level}"))
 }
 
-/// Runs the periodic TTL / rate-limit sweep until the process exits.
+/// Runs the periodic sweep (message TTL, tickets, revocations, rate windows) until exit.
 pub async fn sweeper(state: AppState) {
     let mut tick = tokio::time::interval(std::time::Duration::from_secs(10));
     loop {
