@@ -40,7 +40,7 @@ not been checked on a device yet. Step-by-step status, notes and what's left: PL
 - [~] Audit log (JSON lines, exported as text; Room and a viewer later)
 - [x] Build the app
 - [x] An instrumented test of the bindings against `test-vectors/` (passes on a test phone)
-- [ ] On-device checks (§13.4)
+- [~] On-device checks (§13.4): full flow on a test phone (connect, send ×2, message, site disconnect); biometric variants, screen-lock removal, sign_tx and the error states left
 - [x] Key material wiped end to end: derivation written out with zeroizing intermediates (`blox-evm`), a wiping allocator in `blox-ffi` (UniFFI buffers), no `String` of a stored or new phrase in the app (drawn from bytes); typed phrases stay `String`s (Android text fields)
 
 ## M6: Web SDK

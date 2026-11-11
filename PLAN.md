@@ -313,6 +313,13 @@ listed below while they exist.
     (`SecretPhrase`, one character at a time, so neither a `String` nor the text layout cache
     holds a word) and wipes them on Hide or leaving. The instrumented test passes on the phone
     with both.
+  - **End to end on the phone** (a test phone; RUN.md "With the Android app",
+    `scripts/local-services.sh --no-keystore` on the LAN): signers Main (created) and Anvil
+    (imported), both TEE; endpoint 31337 added and checked; scan → new relay → connect with
+    Anvil; two sends mined (nonce 0 and 1, type 2, gas 25,200), a `personal_sign` that
+    `cast wallet verify` accepts, and disconnect from the site. Fixed on the way: Home kept a
+    stale connection count after a site disconnected (its lists were read outside the
+    recomposing content lambda).
   - **Instrumented test** (`app/src/androidTest/.../BindingsVectorsTest.kt`, 6 tests, passed
     on a test phone): the generated bindings against
     `test-vectors/proto-v1.json` (relay URLs, request signatures, offer, mnemonic → account,

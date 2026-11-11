@@ -96,12 +96,12 @@ described at the top of `crates/blox-ffi/src/lib.rs` and exercised by its tests.
 
 - [x] The app builds
 - [x] The bindings pass `test-vectors/` in an instrumented test (on a test phone)
-- [ ] Adding a signer reports StrongBox or TEE; several signers; removing one deletes its key
+- [~] Adding a signer reports StrongBox or TEE; several signers (both TEE on a test phone); removing one deletes its key
 - [ ] Approve works with fingerprint, face (class 3) and the device-PIN fallback (API 30+)
 - [ ] Removing the screen lock invalidates the seed keys; restoring each signer from its phrase gives the same address; connections keep working
-- [ ] Connect: unknown-relay prompt, signer picker, remember-for, "already used" on a reused QR code
-- [ ] Requests appear when the app opens (within 5 minutes), grouped by site; send, sign_tx, messages; would-fail, no-endpoint, withdrawn
-- [ ] Disconnect from the phone and from the site
+- [~] Connect: unknown-relay prompt, signer picker, remember-for (done); "already used" on a reused QR code
+- [~] Requests appear when the app opens (within 5 minutes), grouped by site; send and messages (done); sign_tx, would-fail, no-endpoint, withdrawn
+- [~] Disconnect from the site (done) and from the phone
 - [ ] Screenshots and screen recording are blocked on every screen
 - [ ] The app contacts only its relays and configured endpoints
 

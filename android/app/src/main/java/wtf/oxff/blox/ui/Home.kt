@@ -32,14 +32,15 @@ fun Home(
     val pending by app.keystore.pending.collectAsState()
     val status by app.keystore.status.collectAsState()
     val notice by app.keystore.notice.collectAsState()
-    val signers = app.vault.list()
-    val connections = app.connections.all()
-
     BloxScreen(
         title = "Blox",
         actions = { IconButton(onClick = onSettings) { Icon(Icons.Filled.Settings, contentDescription = "Settings") } },
         bottom = { PrimaryButton("Scan", onScan) },
     ) {
+        // Read here, not above: this lambda is what recomposes when the requests, status or
+        // notice change (a site disconnecting sets the notice), so the lists are current.
+        val signers = app.vault.list()
+        val connections = app.connections.all()
         if (status.isNotEmpty()) Hint(status)
         notice?.let { Notice(it, onClick = { app.keystore.dismissNotice() }) }
 
