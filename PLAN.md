@@ -124,11 +124,12 @@ listed below while they exist.
   signing and sending, stored answers, relay request signatures, mnemonic helpers. Rust tests
   drive it like the app would.
 
-### 5.2 Android app  `[~]` builds; device checks pending
+### 5.2 Android app  `[~]` builds; instrumented test passes; device checks pending
 - Multiple signers (one wrapping key each), transport keys, settings (endpoints, relays), connect
   screen, connection list, inbox reading, request queue and review screen, audit log.
-- Written on Linux without the Android SDK; built locally (see the notes). The §13.4
-  device checks are pending.
+- Written on Linux without the Android SDK; built locally (see the notes). The bindings
+  pass `test-vectors/` in an instrumented test on a phone. The other §13.4 device checks are
+  pending.
 
 ## M6 — web SDK
 
@@ -295,7 +296,15 @@ listed below while they exist.
     `Throwable.message` in Kotlin, so `RpcFailure`'s field is now `detail` (FFI only; the
     wire format is unchanged). `Scanner.kt` uses ZXing's `MultiFormatReader`, the only reader
     that honours `ALSO_INVERTED` (light-on-dark codes).
-  - **Not done yet:** the §13.4 device checks.
+  - **Instrumented test** (`app/src/androidTest/.../BindingsVectorsTest.kt`, 6 tests, passed
+    on a test phone): the generated bindings against
+    `test-vectors/proto-v1.json` (relay URLs, request signatures, offer, mnemonic → account,
+    `acceptOffer` and `abandonConnect`, and a request round trip: open the keystore-bound
+    `sign_request`, redelivery, review with a Kotlin `EndpointRpc`, approve, broadcast,
+    a JSON-RPC error thrown from Kotlin becomes `failed`, answer). The keystore's X25519 key is
+    derived in Kotlin with RFC 9180 DeriveKeyPair from the vectors' IKM. MIUI needs
+    *USB debugging (Security settings)* for Gradle's install (android/README.md).
+  - **Not done yet:** the other §13.4 device checks.
 - **6.1:** `sdk/js/src`: `bytes`, `b64`, `base45`, `pad`, `relayUrl`, `keys` (two backends),
   `hpke` (RFC 9180 auth / auth_psk on `@noble/hashes` HMAC + WebCrypto AES-GCM), `wire`
   (tokens, request signatures, envelopes, offer, statement, messages). **Deno 1.46's WebCrypto
@@ -405,8 +414,9 @@ listed below while they exist.
 
 ## Left for the user `[!]`
 
-1. **Android (5.2):** the app builds; run the §13.4 device checks (StrongBox and TEE devices, fingerprint/face/PIN, screen-lock removal and
-   restore), and an instrumented test of the bindings against `test-vectors/`.
+1. **Android (5.2):** the app builds and the instrumented vectors test passes; run the §13.4
+   device checks (StrongBox and TEE devices, fingerprint/face/PIN, screen-lock removal and
+   restore).
 2. **Browser (6.x):** run `sdk/js/demo` (`npm install && npm run dev`) in Chrome, Firefox and
    Safari; check IndexedDB keys are non-extractable (`crypto.subtle.exportKey` fails), Web
    Locks across tabs, cancel on reload/`pagehide`; the one-dependency check in fresh Vite and

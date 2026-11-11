@@ -30,6 +30,7 @@ android {
         versionCode = 1
         versionName = "0.1.0"
         ndk { abiFilters += abis }
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
     buildTypes {
@@ -49,6 +50,8 @@ android {
     // Plain paths (AGP 9 disallows providers here); the producing tasks run before preBuild.
     sourceSets["main"].kotlin.directories.add("build/generated/uniffi")
     sourceSets["main"].jniLibs.directories.add("build/rustJniLibs")
+    // The instrumented binding test reads the repo's wire-format vectors.
+    sourceSets["androidTest"].assets.directories.add("../../test-vectors")
 }
 
 val cargoNdk = tasks.register<Exec>("cargoNdk") {
@@ -109,4 +112,8 @@ dependencies {
     implementation(libs.coroutines.android)
     // UniFFI's generated Kotlin loads the Rust library through JNA.
     implementation("${libs.jna.get()}@aar")
+
+    androidTestImplementation(libs.androidx.test.runner)
+    androidTestImplementation(libs.androidx.test.junit)
+    androidTestImplementation(libs.junit)
 }

@@ -12,6 +12,9 @@ okhttp = "5.1.0"
 zxing = "3.5.3"
 jna = "5.17.0"
 coroutines = "1.10.2"
+androidxTestRunner = "1.7.0"
+androidxTestJunit = "1.3.0"
+junit = "4.13.2"
 
 [libraries]
 compose-bom = { group = "androidx.compose", name = "compose-bom", version.ref = "composeBom" }
@@ -32,6 +35,9 @@ okhttp-sse = { group = "com.squareup.okhttp3", name = "okhttp-sse", version.ref 
 zxing-core = { group = "com.google.zxing", name = "core", version.ref = "zxing" }
 jna = { group = "net.java.dev.jna", name = "jna", version.ref = "jna" }
 coroutines-android = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-android", version.ref = "coroutines" }
+androidx-test-runner = { group = "androidx.test", name = "runner", version.ref = "androidxTestRunner" }
+androidx-test-junit = { group = "androidx.test.ext", name = "junit", version.ref = "androidxTestJunit" }
+junit = { group = "junit", name = "junit", version.ref = "junit" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

@@ -39,7 +39,8 @@ not been checked on a device yet. Step-by-step status, notes and what's left: PL
 - [~] Review screen: filled fields, endpoint host, would-fail and no-endpoint states, "Sent · hash" / "Returned to the site"
 - [~] Audit log (JSON lines, exported as text; Room and a viewer later)
 - [x] Build the app
-- [ ] On-device checks (§13.4), an instrumented test of the bindings against `test-vectors/`
+- [x] An instrumented test of the bindings against `test-vectors/` (passes on a test phone)
+- [ ] On-device checks (§13.4)
 - [ ] Carried over: the recovery phrase held as a `String` in Compose state
 
 ## M6: Web SDK

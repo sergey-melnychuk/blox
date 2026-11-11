@@ -1,7 +1,7 @@
 # Blox keystore — Android
 
-> **Status:** the connections UI (PLAN.md step 5.2) builds. The §13.4 device checks below
-> are still to do.
+> **Status:** the connections UI (PLAN.md step 5.2) builds, and the bindings pass the
+> instrumented vectors test on a device. The other §13.4 device checks below are still to do.
 
 The phone-side keystore (BLOX.md §10). Kotlin + Jetpack Compose on top of the shared Rust
 core (`crates/blox-ffi`, UniFFI). The app does UI, the Android Keystore and networking;
@@ -40,6 +40,30 @@ to its full path, e.g. `CARGO=$HOME/.cargo/bin/cargo`. The build looks there by 
 
 Nothing generated is committed. Change Rust code, rebuild the app, and the bindings follow.
 
+## Instrumented test
+
+`app/src/androidTest/.../BindingsVectorsTest.kt` runs the Rust core through the generated
+Kotlin bindings on a device against `test-vectors/proto-v1.json` (packaged as a test asset):
+relay URLs, request signatures, the offer, the mnemonic's account, `acceptOffer`, and a request
+round trip (open the vectors' `sign_request`, redelivery, review with a Kotlin `EndpointRpc`,
+approve, broadcast, a JSON-RPC error thrown from Kotlin, answer).
+
+```sh
+JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home" ./gradlew :app:connectedDebugAndroidTest
+```
+
+Check the output for `Tests run` / `OK`: Gradle reports `BUILD SUCCESSFUL` even when the APKs
+fail to install. On some phones, enable *Developer options → Install via USB* and
+*USB debugging (Security settings)*; without the latter the test APK install fails
+(`INSTALL_GRANT_RUNTIME_PERMISSIONS`). Or install both APKs and run the runner by hand:
+
+```sh
+./gradlew :app:assembleDebug :app:assembleDebugAndroidTest
+adb install -r -t app/build/outputs/apk/debug/app-debug.apk
+adb install -r -t app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
+adb shell am instrument -w -r wtf.oxff.blox.test/androidx.test.runner.AndroidJUnitRunner
+```
+
 ## Trying it locally
 
 See [RUN.md](../RUN.md), section "With the Android app": anvil and a relay on your computer,
@@ -69,6 +93,7 @@ described at the top of `crates/blox-ffi/src/lib.rs` and exercised by its tests.
 ## What to verify on a device (BLOX.md §13.4)
 
 - [x] The app builds
+- [x] The bindings pass `test-vectors/` in an instrumented test (on a test phone)
 - [ ] Adding a signer reports StrongBox or TEE; several signers; removing one deletes its key
 - [ ] Approve works with fingerprint, face (class 3) and the device-PIN fallback (API 30+)
 - [ ] Removing the screen lock invalidates the seed keys; restoring each signer from its phrase gives the same address; connections keep working
@@ -80,7 +105,6 @@ described at the top of `crates/blox-ffi/src/lib.rs` and exercised by its tests.
 
 ## Not done yet
 
-- An instrumented test of the bindings against `test-vectors/`
 - Audit log in Room (currently JSON lines), its viewer, and export as a file
 - More accounts per signer (v2), push (v2)
 - Reproducible release builds and signing setup (§10.1)
