@@ -136,7 +136,7 @@ listed below while they exist.
 - `sdk/js`: base64url, Base45, padding, HPKE (`auth`, `auth_psk`) over WebCrypto, Ed25519
   request signatures, tokens, offer, statement. Passes `test-vectors/` under `deno test`.
 
-### 6.2 Requester  `[ ]`
+### 6.2 Requester  `[x]`
 - Relay client (fetch + SSE parsing, relay time), connect, requests with one in flight, cancel
   (incl. `sessionStorage` after reload), disconnect, storage (IndexedDB with non-extractable
   keys; memory for tests), Web Locks where available, EVM checks (`@noble`), `verifyConnection`.
@@ -303,3 +303,18 @@ listed below while they exist.
   the Rust envelopes; the webcrypto round-trip test skips under this Deno. `@noble` versions
   are pinned to viem 2.57's (curves 1.9.1, hashes 1.8.0) so viem sites ship nothing extra.
   `package.json`/`tsconfig.json` build with `tsc` (not run here: no Node).
+- **6.2:** `src/relay.ts` (signed fetch, clock retry, SSE over `fetch` streaming),
+  `src/store.ts` (`IndexedDbStore` keeping `CryptoKey`s by structured clone, `MemoryStore`),
+  `src/evm.ts` (EIP-191, EIP-712 hashing written here, RLP, legacy/type-2 decoding and sender
+  recovery on `@noble`, checksums, `checkResponse`), `src/blox.ts` (`Blox`: connect with
+  contest detection, one request in flight through Web Locks or a promise chain, cancel
+  pre-sealed at request time and sent on timeout, on `pagehide` with `keepalive` and a
+  pre-signed request (valid for 60 s), and after a reload from `sessionStorage`; typed calls
+  with `checkResponse`; `BloxError` codes; `verifyConnection`). `connect()` now also returns
+  the `statement` and `signature` of a new connection, for server login (spec §9.2 updated;
+  the Rust `Requester::connection_proof` does the same). The Deno integration test spawns the
+  Rust relay, anvil and the mock keystore binary and runs connect, personal_sign,
+  typed_data, send (checked on anvil), sign_tx (broadcast by the test), no_endpoint,
+  restart from storage, disconnect and a stale copy, ±600 s clock skew, an expired request,
+  and server login with a nonce. **Not exercised here:** IndexedDB, Web Locks,
+  `sessionStorage`, `pagehide` (no browser).

@@ -118,6 +118,20 @@ async fn connect_request_and_restart_from_the_store() {
     let resp = r.request(req("hello")).await.unwrap();
     assert_eq!(signature(&resp), format!("0x{}", hex("hello")));
 
+    // The login proof verifies against the ticket (here the requester's own random one).
+    let (statement, proof_sig) = r.connection_proof().await.unwrap();
+    let nonce = blox_proto::statement::field(&statement, "Nonce")
+        .unwrap()
+        .to_owned();
+    blox_client::verify_connection(
+        &ks.signer(0).address(),
+        &statement,
+        &proof_sig,
+        &blox_proto::ident::Ticket::parse(&nonce).unwrap(),
+        r.relay().now(),
+    )
+    .unwrap();
+
     // A new requester over the same store needs no QR code.
     let again = no_qr(&base, &store);
     let resp = again.request(req("again")).await.unwrap();

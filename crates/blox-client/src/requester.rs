@@ -62,6 +62,8 @@ struct Live {
     conn: Connection,
     sig: SigningKey,
     account: String,
+    /// The account's statement and signature, when this requester made the connection.
+    proof: Option<(String, String)>,
 }
 
 impl Requester {
@@ -98,6 +100,16 @@ impl Requester {
         self.live.lock().await.as_ref().map(|l| l.account.clone())
     }
 
+    /// The account's connection statement and signature, if this requester made the
+    /// connection: give them to [`verify_connection`] on the site's server (§9.2).
+    pub async fn connection_proof(&self) -> Option<(String, String)> {
+        self.live
+            .lock()
+            .await
+            .as_ref()
+            .and_then(|l| l.proof.clone())
+    }
+
     /// Connects (showing the QR code) unless a stored connection is still valid.
     pub async fn connect(&self) -> Result<String> {
         self.connect_with(None).await
@@ -122,6 +134,7 @@ impl Requester {
                         conn,
                         sig,
                         account: account.clone(),
+                        proof: None,
                     });
                     return Ok(account);
                 }
@@ -178,6 +191,7 @@ impl Requester {
                 return Err(Error::Contested);
             }
             let account = first.account.clone();
+            let proof = Some((first.statement.clone(), first.signature.clone()));
             let (conn, bound) = attempt.accept(first, now)?;
             self.relay
                 .post(
@@ -195,6 +209,7 @@ impl Requester {
                     conn,
                     sig: keys.sig,
                     account,
+                    proof,
                 },
                 stored,
             ));
@@ -312,6 +327,7 @@ impl Requester {
                     conn,
                     sig,
                     account: s.account.clone(),
+                    proof: None,
                 })
             }),
         };

@@ -745,7 +745,8 @@ await blox.disconnect();                           // unbind + revoke, forget th
   if there is one; to use another signer, `disconnect()` and connect again.
 - `message` is a string (sent as its UTF-8 bytes) or bytes. `chain` is the chain ID (§6.2).
 - `connect({ nonce })` takes a 16-byte nonce from the site's server and uses it as the ticket, so
-  the server can check the connection statement: `verifyConnection({ account, statement,
+  the server can check the connection statement: when `connect()` makes a new connection it
+  also returns `statement` and `signature`, and `verifyConnection({ account, statement,
   signature }, { nonce })` (TypeScript and Rust) checks the format, the nonce, the times and the
   signature. This is the login. See §3.3 on what it does not prove.
 - **One request in flight per connection.** Further calls wait in the SDK, across tabs too (a
