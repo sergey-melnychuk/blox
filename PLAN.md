@@ -132,7 +132,7 @@ listed below while they exist.
 
 ## M6 — web SDK
 
-### 6.1 Protocol in TypeScript  `[ ]`
+### 6.1 Protocol in TypeScript  `[x]`
 - `sdk/js`: base64url, Base45, padding, HPKE (`auth`, `auth_psk`) over WebCrypto, Ed25519
   request signatures, tokens, offer, statement. Passes `test-vectors/` under `deno test`.
 
@@ -292,3 +292,14 @@ listed below while they exist.
   - **Not done here:** compiling (no Android SDK; running a downloaded `ktlint` for a syntax
     check was not permitted), the §13.4 device checks, an instrumented test of the
     bindings.
+- **6.1:** `sdk/js/src`: `bytes`, `b64`, `base45`, `pad`, `relayUrl`, `keys` (two backends),
+  `hpke` (RFC 9180 auth / auth_psk on `@noble/hashes` HMAC + WebCrypto AES-GCM), `wire`
+  (tokens, request signatures, envelopes, offer, statement, messages). **Deno 1.46's WebCrypto
+  X25519 `deriveBits` fails with "Invalid key" for every key** (Ed25519 works), so the SDK
+  has a `raw` backend on `@noble/curves` for Node/Deno/servers (keys stored as bytes, as
+  §9.6 allows for backends) and uses WebCrypto non-extractable keys in browsers, failing
+  with `UnsupportedBrowser` there if WebCrypto is missing. The vector test reproduces the
+  Rust token bytes, signatures, request signature, statement and offer URI exactly and opens
+  the Rust envelopes; the webcrypto round-trip test skips under this Deno. `@noble` versions
+  are pinned to viem 2.57's (curves 1.9.1, hashes 1.8.0) so viem sites ship nothing extra.
+  `package.json`/`tsconfig.json` build with `tsc` (not run here: no Node).

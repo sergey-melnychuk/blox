@@ -1,0 +1,15 @@
+{
+  "imports": {
+    "@noble/curves/": "npm:/@noble/curves@1.9.1/",
+    "@noble/hashes/": "npm:/@noble/hashes@1.8.0/",
+    "@wagmi/core": "npm:@wagmi/core@3.6.9",
+    "viem": "npm:viem@2.57.17",
+    "viem/": "npm:/viem@2.57.17/"
+  },
+  "compilerOptions": {
+    "lib": ["deno.window", "dom"]
+  },
+  "tasks": {
+    "test": "deno test --allow-net --allow-read --allow-run --allow-env test/"
+  }
+}
