@@ -35,7 +35,7 @@ listed below while they exist.
 - `api`: the relay's JSON shapes and error codes (§8.2), shared by the relay and the clients.
 - Unit tests for each.
 
-### 3.2 Retire the JSON-RPC adapter  `[ ]`
+### 3.2 Retire the JSON-RPC adapter  `[x]`
 - Delete `blox-adapter` and `blox-cli` (and the `cast`/`forge` tests). `TxRequest`/`Fill` stay
   in `blox-evm` for M4.
 
@@ -167,3 +167,4 @@ listed below while they exist.
   so a token or request can't be satisfied by a small-order key. The token's id covers only
   the body, so the half-signed and the countersigned token have the same id and one revocation
   covers both. `statement::iso8601` is a small civil-date conversion, to avoid a date crate.
+- **3.2:** `RUN.md` carries an "outdated" banner until 4.4 rewrites it.

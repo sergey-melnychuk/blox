@@ -1,5 +1,8 @@
 # Running Blox on a phone
 
+> **Outdated:** this describes the retired `blox rpc` / `cast` flow. It is rewritten for
+> connections in PLAN.md step 4.4.
+
 A full signing round trip: `cast` on your computer → `blox rpc` → relay → the Android app →
 approve on the phone → transaction mined on a local anvil chain. Commands assume you're in
 the repo root (`blox/`).
