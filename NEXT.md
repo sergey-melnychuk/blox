@@ -5,9 +5,9 @@ transaction); sites and apps connect to one signer once with a QR code and then 
 through the relay, which authorizes writes with connection tokens and keeps messages 5 minutes.
 The JSON-RPC adapter (`blox rpc`) is retired. See BLOX.md §16.
 
-**Done so far:** M1, M2 (retired), M3, M4, the Rust side of M5
-(`blox-ffi`), M6 except browser checks, and M7's files. The Android app (M5) builds but has
-not been checked on a device yet. Step-by-step status, notes and what's left: PLAN.md.
+**Done so far:** M1, M2 (retired), M3, M4, M5 (`blox-ffi` and the Android app, run end to
+end on a phone; some device checks remain), M6 except browser checks, and M7's files and
+runbook (DEPLOY.md; not yet run on Linux). Step-by-step status, notes and what's left: PLAN.md.
 
 ## M3: connections (Rust)
 
@@ -54,6 +54,7 @@ not been checked on a device yet. Step-by-step status, notes and what's left: PL
 ## M7: Deploy and release
 
 - [x] Dockerfile and Caddyfile, README (§14.2)
+- [x] Runbook `DEPLOY.md`: systemd unit, static builds, Caddy, log rotation, checks, upgrades
 - [ ] Deploy `relay.example.com`, reproducible signed APK
 
 ## Later

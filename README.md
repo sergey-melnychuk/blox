@@ -84,13 +84,9 @@ the Android app.
 BLOX_LISTEN=localhost:8080 cargo run --release -p blox-relay
 ```
 
-To self-host, build the image and put Caddy in front for TLS:
-
-```sh
-docker build -f deploy/Dockerfile -t blox-relay .
-docker run -d --restart unless-stopped -p localhost:8080:8080 -e BLOX_TRUST_PROXY=1 blox-relay
-caddy run --config deploy/Caddyfile        # edit the host name first
-```
+To self-host, run it under systemd (or Docker) with Caddy in front for TLS:
+[DEPLOY.md](DEPLOY.md) has the whole runbook (static build, unit, Caddyfile, log rotation,
+checks, upgrades), with the files in [`deploy/`](deploy/).
 
 Limits (message TTL 5 minutes, queue sizes, rate limits, token lifetime) are flags and
 environment variables; `blox-relay --help` lists them and `GET /v1/info` publishes them. The

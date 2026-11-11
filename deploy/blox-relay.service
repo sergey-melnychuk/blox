@@ -1,0 +1,49 @@
+# The relay as a systemd service (DEPLOY.md). Install as /etc/systemd/system/blox-relay.service.
+# It keeps everything in memory (BLOX.md §8.5), so it needs no user, files or state of its own:
+# a throwaway user (DynamicUser), a read-only system, and network access only.
+[Unit]
+Description=Blox relay
+Documentation=https://github.com/sergey-melnychuk/blox/blob/main/DEPLOY.md
+After=network-online.target time-sync.target
+Wants=network-online.target
+
+[Service]
+Type=exec
+EnvironmentFile=/etc/blox/relay.env
+ExecStart=/usr/local/bin/blox-relay
+Restart=always
+RestartSec=2
+
+# Each SSE reader holds a socket; queued messages are capped at BLOX_GLOBAL_MAX_BYTES (512 MiB).
+LimitNOFILE=65536
+MemoryMax=1G
+
+DynamicUser=yes
+UMask=0077
+NoNewPrivileges=yes
+CapabilityBoundingSet=
+AmbientCapabilities=
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+ProtectProc=invisible
+ProcSubset=pid
+RestrictAddressFamilies=AF_INET AF_INET6
+RestrictNamespaces=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+SystemCallFilter=~@privileged @resources
+
+[Install]
+WantedBy=multi-user.target

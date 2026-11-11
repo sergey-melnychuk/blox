@@ -1,8 +1,10 @@
+use std::io::IsTerminal;
 use std::net::SocketAddr;
 use std::time::Duration;
 
 use blox_relay::{AppState, Limits, router, sweeper};
-use clap::Parser;
+use clap::builder::BoolishValueParser;
+use clap::{ArgAction, Parser};
 
 /// Blox relay: blind store-and-forward between connected parties (BLOX.md §8).
 ///
@@ -14,7 +16,9 @@ struct Args {
     #[arg(long, env = "BLOX_LISTEN", default_value = "localhost:8080")]
     listen: SocketAddr,
     /// Take the client IP from X-Forwarded-For (only behind a trusted reverse proxy).
-    #[arg(long, env = "BLOX_TRUST_PROXY")]
+    /// The variable takes 1/0, true/false, yes/no or on/off.
+    #[arg(long, env = "BLOX_TRUST_PROXY", action = ArgAction::SetTrue,
+          value_parser = BoolishValueParser::new())]
     trust_proxy: bool,
     #[arg(long, env = "BLOX_MAX_ENVELOPE_BYTES", default_value_t = Limits::default().max_envelope_bytes)]
     max_envelope_bytes: usize,
@@ -51,8 +55,10 @@ struct Args {
 #[tokio::main]
 async fn main() -> std::io::Result<()> {
     let level = std::env::var("BLOX_LOG").unwrap_or_else(|_| "info".into());
+    // Colours only on a terminal: under systemd the lines go to the journal as plain text.
     tracing_subscriber::fmt()
         .with_env_filter(blox_relay::log_filter(&level))
+        .with_ansi(std::io::stdout().is_terminal())
         .init();
     let a = Args::parse();
     let limits = Limits {
@@ -75,7 +81,7 @@ async fn main() -> std::io::Result<()> {
     let state = AppState::new(limits, a.trust_proxy);
     tokio::spawn(sweeper(state.clone()));
     let listener = tokio::net::TcpListener::bind(a.listen).await?;
-    tracing::info!(listen = %a.listen, "blox-relay started");
+    tracing::info!(listen = %a.listen, trust_proxy = a.trust_proxy, "blox-relay started");
     axum::serve(
         listener,
         router(state).into_make_service_with_connect_info::<SocketAddr>(),

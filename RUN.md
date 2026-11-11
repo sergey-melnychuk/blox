@@ -2,7 +2,8 @@
 
 Two ways to see a full round trip: **without a phone** (the mock keystore stands in for the
 app) and **with the Android app**. Both use a local anvil chain and a local relay. Commands
-assume you're in the repo root (`blox/`).
+assume you're in the repo root (`blox/`). Running the relay on a server is in
+[DEPLOY.md](DEPLOY.md).
 
 ## Without a phone
 

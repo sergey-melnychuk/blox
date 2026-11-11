@@ -1,8 +1,7 @@
 # Blox — Phone Keystore: Technical Specification
 
 > **For the coding agent:** This spec is self-contained. The repo implements most of it
-> (M1–M4, the web SDK, the Rust side of M5; the Android app is written but
-> not yet built): PLAN.md has the status of every step and the implementation notes, NEXT.md the
+> (M1–M4, the web SDK, M5 with the Android app run end to end on a phone, M7's runbook): PLAN.md has the status of every step and the implementation notes, NEXT.md the
 > milestones. Read every section before writing a line. The security properties in §3 and §4 are
 > non-negotiable; implementation notes marked *(hint)* are suggestions, not constraints.
 >
@@ -691,7 +690,12 @@ Required, because the browser SDK talks to the relay directly.
       }
   }
   ```
-- Ship a Dockerfile (distroless or scratch image).
+- Caddy's own error loggers (`http.log.error`, `http.handlers.reverse_proxy`, `http.stdlib`)
+  record the client address and the full URI when a request fails; the shipped Caddyfile
+  excludes them.
+- Ship a Dockerfile (distroless or scratch image), and a systemd unit for a static binary
+  (`DynamicUser`, read-only system, loopback listener, logs in the journal). DEPLOY.md is
+  the runbook.
 
 ---
 

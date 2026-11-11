@@ -1,6 +1,21 @@
-# TLS in front of the relay (BLOX.md §8.7). No `log` directive: Caddy writes no access log.
-# Run the relay with --trust-proxy (BLOX_TRUST_PROXY=1) so rate limits see client addresses.
+# TLS in front of the relay (BLOX.md §8.7, DEPLOY.md). Install as /etc/caddy/Caddyfile and
+# change the host name. Caddy gets and renews the certificate itself (ports 80 and 443 open).
+#
+# Privacy (BLOX.md §8.5): no `log` directive in the site block, so there is no access log.
+# Caddy's own log goes to the journal; the loggers excluded below can carry a request's client
+# address and URI (which holds an inbox id) when something fails, so they are off.
+{
+	log default {
+		output stderr
+		format console
+		level INFO
+		exclude http.log.error http.handlers.reverse_proxy http.stdlib
+	}
+}
+
 relay.example.com {
+	# The relay listens on loopback only and takes the client address from the
+	# X-Forwarded-For entry Caddy adds (BLOX_TRUST_PROXY=1 in /etc/blox/relay.env).
 	reverse_proxy localhost:8080 {
 		# Server-sent events: pass each event through at once.
 		flush_interval -1

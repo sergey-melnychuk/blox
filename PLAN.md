@@ -382,6 +382,19 @@ listed below while they exist.
   `.dockerignore`, and `README.md` per §14.2 with a status note. The image was not built here
   (pulling and running base images wasn't attempted). Deploying `relay.example.com`, the release
   key and signed reproducible APKs remain the user's.
+- **7.1, systemd runbook:** `DEPLOY.md` (server, static build with `cargo zigbuild` for
+  x86-64 and arm64 musl, install, Caddy from its apt repository, journal rotation with a
+  logrotate alternative, checks, upgrade/rollback, troubleshooting, Docker alternative), with
+  `deploy/blox-relay.service` (DynamicUser, read-only system, AF_INET/6 only, syscall filter,
+  MemoryMax 1G, 65,536 files), `deploy/relay.env`, `deploy/journald-blox.conf`, and the
+  Caddyfile's global log excluding the loggers that write client addresses and URIs on errors.
+  Tested locally: both static builds; `caddy validate`; the RUN.md flow (connect, send,
+  message, disconnect) through Caddy with the relay at debug: neither logged an address
+  or an inbox path, including during a 502; Caddy replaces a client's `X-Forwarded-For`.
+  Found on the way: `BLOX_TRUST_PROXY=1`, as the Dockerfile and README said, made the relay
+  refuse to start (clap took only `true`/`false`); it now takes 1/0, yes/no, on/off too, and
+  the start line logs `trust_proxy`. The relay's log has no colour codes off a terminal. The
+  unit itself wasn't run (no Linux host here).
 
 - **Fix after 7.1 (flaky anvil tests):** about one run in five hung for the full 300 s
   request timeout. Two causes, both found with tracing:
