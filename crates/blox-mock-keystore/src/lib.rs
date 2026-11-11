@@ -1,10 +1,13 @@
 //! A keystore stand-in for tests and local runs (BLOX.md §13.1).
 //!
 //! It holds signers (each with its transport keys `K`/`k`), accepts offers from QR
-//! strings, keeps connections, reads its inboxes, and answers requests with a
-//! caller-supplied handler. Delivery follows §10.6: a request is acknowledged only once it
-//! is answered, cancelled or expired, and answers are stored so a redelivered request gets
-//! the same answer again.
+//! strings, keeps connections, reads its inboxes, and answers requests either with a
+//! caller-supplied handler or, in "app mode", the way the app does: fill from a configured
+//! endpoint, approve automatically, sign, record, broadcast (§10.4–§10.8). Delivery follows
+//! §10.6: a request is acknowledged only once it is answered, cancelled or expired, and
+//! answers are stored so a redelivered request gets the same answer again.
+
+pub mod rpc;
 
 use std::collections::{HashMap, HashSet};
 use std::future::Future;
@@ -14,10 +17,14 @@ use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use blox_client::{Error, RelayClient, Result, WriteAuth};
-use blox_evm::PrivateKeySigner;
+use blox_evm::keystore::{
+    Approved, Endpoint, ReviewError, approve, broadcast, failed, rejected, review,
+};
+use blox_evm::{Address, PrivateKeySigner};
 use blox_proto::connection::{Connection, Keys, PendingConnection, accept_offer};
 use blox_proto::envelope::Envelope;
 use blox_proto::keys::PublicKey;
+use blox_proto::message::RejectReason;
 use blox_proto::message::{Body, Empty, Message, MsgId, SignRequest, SignResponse};
 use blox_proto::offer::Offer;
 use tokio::sync::oneshot;
@@ -123,9 +130,30 @@ struct State {
     handled: usize,
 }
 
+/// Where a test makes the keystore "crash" once (§10.6, §10.8).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Crash {
+    /// The answer was sent, but the request wasn't acknowledged.
+    AfterAnswerBeforeAck,
+    /// The transaction was signed and recorded, but not broadcast or answered.
+    AfterSignBeforeBroadcast,
+}
+
+/// App mode: chain endpoints and the nonce bookkeeping of §10.4.
+pub struct App {
+    endpoints: HashMap<u64, Arc<rpc::HttpRpc>>,
+    last_sent: Mutex<HashMap<(u64, Address), u64>>,
+}
+
+enum Mode {
+    Handler(Handler),
+    App(Arc<App>),
+}
+
 struct Inner {
     signers: Vec<Arc<Signer>>,
-    handler: Handler,
+    mode: Mode,
+    crash: Mutex<Option<Crash>>,
     options: Options,
     state: Mutex<State>,
     relays: Mutex<HashMap<String, RelayClient>>,
@@ -142,9 +170,27 @@ impl MockKeystore {
     }
 
     pub fn with_options(signers: Vec<Signer>, handler: Handler, options: Options) -> Self {
+        Self::build(signers, Mode::Handler(handler), options)
+    }
+
+    /// App mode: requests are filled from `endpoints` (chain id → JSON-RPC URL), approved
+    /// automatically, signed and (for `evm.send`) broadcast. Call inside a Tokio runtime.
+    pub fn app(signers: Vec<Signer>, endpoints: &[(u64, &str)], options: Options) -> Self {
+        let app = App {
+            endpoints: endpoints
+                .iter()
+                .map(|(chain, url)| (*chain, Arc::new(rpc::HttpRpc::new(url))))
+                .collect(),
+            last_sent: Mutex::default(),
+        };
+        Self::build(signers, Mode::App(Arc::new(app)), options)
+    }
+
+    fn build(signers: Vec<Signer>, mode: Mode, options: Options) -> Self {
         Self(Arc::new(Inner {
             signers: signers.into_iter().map(Arc::new).collect(),
-            handler,
+            mode,
+            crash: Mutex::new(None),
             options,
             state: Mutex::default(),
             relays: Mutex::default(),
@@ -155,6 +201,21 @@ impl MockKeystore {
 
     pub fn signer(&self, i: usize) -> &Arc<Signer> {
         &self.0.signers[i]
+    }
+
+    /// Makes the keystore "crash" once at `at`; restart it with `go_offline` + `go_online`.
+    pub fn crash_once(&self, at: Crash) {
+        *self.0.crash.lock().unwrap() = Some(at);
+    }
+
+    fn take_crash(&self, at: Crash) -> bool {
+        let mut c = self.0.crash.lock().unwrap();
+        if *c == Some(at) {
+            *c = None;
+            true
+        } else {
+            false
+        }
     }
 
     fn relay(&self, url: &str) -> RelayClient {
@@ -421,8 +482,14 @@ impl MockKeystore {
                     now,
                     request,
                 };
-                let Some(resp) = (self.0.handler)(ctx).await else {
-                    return false; // unanswered: stays on the relay
+                let resp = match &self.0.mode {
+                    Mode::Handler(h) => h(ctx).await,
+                    Mode::App(app) => self.app_answer(app.clone(), ctx, relay, &conn_id).await,
+                };
+                // `None`: unanswered (the user hasn't acted, or a simulated crash); it stays
+                // on the relay and is delivered again.
+                let Some(resp) = resp else {
+                    return false;
                 };
                 let sealed = {
                     let mut st = self.0.state.lock().unwrap();
@@ -442,7 +509,8 @@ impl MockKeystore {
                     st.handled += 1;
                     sealed
                 };
-                self.post_answer(relay, signer, &conn_id, sealed).await
+                let posted = self.post_answer(relay, signer, &conn_id, sealed).await;
+                posted && !self.take_crash(Crash::AfterAnswerBeforeAck)
             }
             Body::Cancel(_) => {
                 if let Some(re) = msg.re {
@@ -486,8 +554,93 @@ impl MockKeystore {
         let Some(id) = id else { return true };
         let answer = self.0.state.lock().unwrap().answers.get(&id).cloned();
         match answer {
-            Some(a) => self.post_answer(relay, signer, &conn_id, a).await,
+            Some(a) => {
+                self.0.state.lock().unwrap().open_requests.remove(&id);
+                self.post_answer(relay, signer, &conn_id, a).await
+            }
             None => !self.0.state.lock().unwrap().open_requests.contains_key(&id),
+        }
+    }
+
+    /// The app's flow for one request: review (fill), auto-approve, sign, record, broadcast.
+    async fn app_answer(
+        &self,
+        app: Arc<App>,
+        ctx: RequestCtx,
+        relay: &RelayClient,
+        conn_id: &[u8; 32],
+    ) -> Option<SignResponse> {
+        let signer = ctx.signer.clone();
+        let from = signer.key.address();
+        let reviewed = {
+            let (app, signer) = (app.clone(), signer.clone());
+            tokio::task::spawn_blocking(move || {
+                review(
+                    &ctx.request,
+                    ctx.ts,
+                    ctx.now,
+                    (from, &signer.label),
+                    |chain| {
+                        app.endpoints.get(&chain).map(|e| Endpoint {
+                            rpc: e.as_ref(),
+                            host: e.host(),
+                        })
+                    },
+                    |chain| app.last_sent.lock().unwrap().get(&(chain, from)).copied(),
+                )
+                .map(|rv| (rv, ctx.id))
+            })
+            .await
+            .expect("review task")
+        };
+        let (rv, id) = match reviewed {
+            Ok(x) => x,
+            Err(ReviewError::Reject(r)) => return Some(rejected(r)),
+            Err(ReviewError::WouldFail(_)) => return Some(rejected(RejectReason::WouldFail)),
+            // The user would see Retry/Reject; the mock rejects.
+            Err(ReviewError::Unreachable(_)) => return Some(rejected(RejectReason::User)),
+        };
+        match approve(&signer.key, &rv) {
+            Approved::Answer(a) => Some(a),
+            Approved::Broadcast {
+                raw,
+                tx_hash,
+                nonce,
+            } => {
+                // Record before broadcasting (§10.8): a redelivery after a crash gets this.
+                let pre = failed(
+                    rv.chain_id,
+                    from,
+                    tx_hash,
+                    "the keystore restarted before confirming the broadcast",
+                );
+                self.store_answer(conn_id, id, pre, relay.now());
+                if self.take_crash(Crash::AfterSignBeforeBroadcast) {
+                    return None;
+                }
+                let rpc = app.endpoints.get(&rv.chain_id)?.clone();
+                let chain = rv.chain_id;
+                let resp = tokio::task::spawn_blocking(move || {
+                    broadcast(rpc.as_ref(), chain, from, &raw, tx_hash)
+                })
+                .await
+                .expect("broadcast task");
+                if matches!(resp, SignResponse::Sent { .. }) {
+                    app.last_sent.lock().unwrap().insert((chain, from), nonce);
+                }
+                Some(resp)
+            }
+        }
+    }
+
+    fn store_answer(&self, conn_id: &[u8; 32], id: MsgId, resp: SignResponse, now: u64) {
+        let mut st = self.0.state.lock().unwrap();
+        let Some(entry) = st.connections.get(conn_id) else {
+            return;
+        };
+        let reply = Message::reply_at(id, Body::SignResponse(resp), now);
+        if let Ok(sealed) = entry.conn.seal(&reply) {
+            st.answers.insert(id, sealed);
         }
     }
 

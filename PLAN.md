@@ -102,7 +102,7 @@ listed below while they exist.
 - `send`, `sign_transaction`, `personal_sign`, `sign_typed_data` on `Requester`, with the §9.5
   checks and `bad_response`.
 
-### 4.3 Mock keystore with anvil  `[ ]`
+### 4.3 Mock keystore with anvil  `[x]`
 - Real filling and broadcasting against an anvil endpoint, two signers, acknowledgement only
   after answering, stored answers for redelivery (§10.6, §10.8).
 - The §13.1 gates that need no phone or browser: send, consecutive nonces, sign_tx then
@@ -235,3 +235,13 @@ listed below while they exist.
   `rejected` answer before decoding the request, so a request the phone refused as
   malformed reports the phone's reason. Requests carry `origin { name, url }` from
   `Config` (`origin_url` is new). Mock handlers get the message `ts` and relay `now`.
+- **4.3:** `MockKeystore::app(signers, endpoints, options)` runs the app's flow with
+  `blox_evm::keystore` (review → auto-approve → sign → record → broadcast); `would_fail` and
+  an unreachable endpoint are answered as rejections. `rpc::HttpRpc` implements `ChainRpc`
+  with async reqwest + `Handle::block_on`, so it must be called from `spawn_blocking` (the
+  mock does). Before broadcasting, the mock stores a `failed` answer carrying the hash; a
+  crash between signing and broadcasting therefore answers `failed` with that hash after the
+  restart, and the next request reuses the nonce (the transaction never reached the
+  endpoint). `crash_once(Crash::…)` + `go_offline`/`go_online` simulate the two crash points.
+  The anvil tests (10) start their own anvil on a free port and skip with a message when it
+  is missing; receipts are polled because anvil mines asynchronously.
