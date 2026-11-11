@@ -2,6 +2,7 @@
 //! requester-side checks (BLOX.md §6.3, §9.5, §10.4).
 
 pub mod caip;
+pub mod connect;
 pub mod display;
 pub mod rpc;
 pub mod sign;

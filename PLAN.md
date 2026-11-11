@@ -66,7 +66,7 @@ listed below while they exist.
   rewrites it properly.
 - Temporarily exclude `blox-client`, `blox-mock-keystore`, `blox-ffi` from the workspace.
 
-### 3.5 Rust requester (`blox-client`)  `[ ]`
+### 3.5 Rust requester (`blox-client`)  `[x]`
 - Relay client: signed requests, relay time offset (§4.8) with one retry after `401 clock`,
   error codes mapped to client errors, SSE reader that reconnects.
 - `blox-evm`: sign and verify the connection statement (EIP-191).
@@ -192,3 +192,17 @@ listed below while they exist.
   `blox-evm` got the minimum to compile (`verify.rs` deleted, `prepare` without the account
   field); 4.1 rewrites it. **Workspace exclusions now:** `blox-client`, `blox-mock-keystore`,
   `blox-ffi`.
+- **3.5:** `RelayClient` signs with relay time: it syncs from `/v1/info` before the first
+  signed call and again after a `401 clock`, then retries once. `Requester::request` is
+  generic (`SignRequest` → `SignResponse`); M4 adds the typed calls. It subscribes to inbox `S`
+  before posting, so a fast answer can't be missed, and it pre-seals the `cancel` at request
+  time, so a timed-out or dropped call can still withdraw it (the guard's `Drop` spawns the
+  post). Responses to other requesters on the same connection (another tab) are left
+  unacknowledged; undecryptable or stale messages are acknowledged and dropped; a replay is
+  skipped. Contest detection (§5.3) looks at binds already delivered when the first valid one
+  is handled; with an honest relay the ticket makes a second bind impossible, so this is
+  covered by a unit-level check rather than an integration test. A stored connection is used
+  only if it is unexpired and for the configured relay. `FileStore` writes 0600 via a temp
+  file and rename. `verify_connection` (server login) parses the statement's `Account`,
+  `Nonce`, `Issued` (≤ 300 s old) and `Expires` lines. **Workspace exclusions now:**
+  `blox-mock-keystore`, `blox-ffi`.

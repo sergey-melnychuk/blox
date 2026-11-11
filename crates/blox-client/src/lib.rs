@@ -1,37 +1,46 @@
-//! Adapter-side client for the Blox relay (BLOX.md §5, §8.2, §9.9).
-//!
-//! [`RelayClient`] speaks the relay's HTTP API; [`Signer`] opens a one-shot
-//! session and [`Session`] sends signing requests over it.
+//! Rust requester for Blox (BLOX.md §9): connects to a phone keystore once with a QR code,
+//! keeps the connection, and sends signing requests through the relay.
 
 mod relay;
-mod session;
+mod requester;
+mod store;
 
-pub use relay::{Delivery, RelayClient, Subscription};
-pub use session::{Session, Signer};
+pub use relay::{Delivery, RelayClient, Subscription, WriteAuth};
+pub use requester::{Config, MAX_REQUEST_SECS, QrCallback, Requester, verify_connection};
+pub use store::{ConnectionStore, FileStore, MemoryStore, StoredConnection};
 
-use blox_proto::message::CloseReason;
+use blox_proto::api::ErrorCode;
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
-    #[error("relay: {0}")]
-    Relay(String),
-    #[error("relay rejected the read secret")]
-    Unauthorized,
-    #[error("no signer joined")]
-    NoSignerJoined,
-    #[error("session aborted: another device joined")]
+    /// The relay refused the request (`relay_error`).
+    #[error("relay refused the request: {0:?}")]
+    Relay(ErrorCode),
+    /// The relay couldn't be reached.
+    #[error("network: {0}")]
+    Network(String),
+    #[error("no phone answered the QR code in time")]
+    NoSigner,
+    #[error("a second device answered the QR code; someone may have seen it")]
     Contested,
-    #[error("session closed ({0:?})")]
-    Closed(CloseReason),
-    #[error("timed out waiting for the signer")]
+    #[error("the request expired before the phone answered")]
     Timeout,
+    #[error("the connection was ended or has expired")]
+    Disconnected,
+    #[error("cancelled")]
+    Cancelled,
+    /// A response failed the checks of §9.5.
+    #[error("bad response: {0}")]
+    BadResponse(String),
+    #[error("connection store: {0}")]
+    Store(std::io::Error),
     #[error(transparent)]
     Proto(#[from] blox_proto::Error),
 }
 
 impl From<reqwest::Error> for Error {
     fn from(e: reqwest::Error) -> Self {
-        // reqwest errors can include the URL, which contains a mailbox id; keep only the kind.
+        // reqwest errors can include the URL, which contains an inbox id; keep only the kind.
         let kind = if e.is_timeout() {
             "timeout"
         } else if e.is_connect() {
@@ -43,7 +52,7 @@ impl From<reqwest::Error> for Error {
         } else {
             "request"
         };
-        Error::Relay(kind.into())
+        Error::Network(kind.into())
     }
 }
 
