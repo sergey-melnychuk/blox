@@ -12,7 +12,7 @@
 >   app connects to one signer once, with a QR code. After that it sends requests through the
 >   relay, which keeps them 5 minutes for the phone to pick up.
 > - **v2** (§12) adds receiving with the app closed (push), per-connection policies, simulation
->   on the phone, importing existing mnemonics, and iOS.
+>   on the phone, and iOS.
 > - **v3** (§12.7) adds Solana, Bitcoin and other non-EVM chains.
 >
 > v2 and v3 are planned only. Do not implement them, but do not make choices that block them.
@@ -115,7 +115,7 @@ and its own view of the chain, has its own screen, and decides.**
 - Per-connection policies (allowed chains, kinds, value caps) and auto-approval (v2, §12.2).
   Every request needs a human approval.
 - Simulation on the phone (v2, §12.3). The MVP only checks that `eth_estimateGas` succeeds (§10.4).
-- Importing an existing mnemonic in release builds, and more than one account per signer (v2, §12.5).
+- More than one account per signer (v2, §12.5).
 - An iOS app (v2). The shared Rust core (§10.1) is designed so an iOS app can reuse it.
 - Non-EVM chains (v3).
 - **Not planned at all:** a network-side JSON-RPC signer for tools such as `cast` and `forge`
@@ -949,10 +949,13 @@ processes sharing one stored connection are not supported.
 - A **signer** is one BIP-39 seed and the EVM account derived from it at `m/44'/60'/0'/0/0`,
   with a label the user chooses, plus its transport keys `K`/`k` (§2.1). The keystore holds any
   number of signers.
-- **Adding** a signer generates a new mnemonic in Rust. The user must back it up: view it (under
-  `FLAG_SECURE`) and confirm 3 of its words. Only then is it stored.
-- **Importing** an existing mnemonic (an "external signer") is v2 for release builds (§12.5).
-  Debug builds keep import, for test phrases such as anvil's.
+- **Adding** a signer generates a new mnemonic in Rust. The user is shown it (under
+  `FLAG_SECURE`) to back it up, then asked to confirm 3 of its words; the check can be skipped.
+- **Importing** an existing mnemonic (an "external signer") is a separate way to add a signer,
+  in every build: less safe, but portable. The add-signer screen offers it next to creating a
+  new phrase, with a warning that a phrase that was ever typed, stored or photographed elsewhere
+  is only as safe as wherever it was. The signer is marked as imported, and its screen says so.
+  Creating a new phrase stays the recommended choice.
 - **Removing** a signer shows a warning that its funds are lost without the recovery phrase, then
   requires authentication and typing the last 4 hex characters of its address. Removal first
   ends the signer's connections (§5.5, best effort if offline), then deletes the signer's
@@ -986,7 +989,18 @@ processes sharing one stored connection are not supported.
   anything.
 - The decrypted seed exists only during a signing call. Kotlin passes the plaintext `ByteArray`
   to Rust, which derives the key, signs and then zeroizes (`zeroize` crate). Kotlin clears its
-  array right after the call.
+  array right after the call. In detail:
+  - The derivation (BIP-39 seed by PBKDF2, BIP-32 to `m/44'/60'/0'/0/i`) is written out in
+    `blox-evm` so every intermediate is wiped: the joined words, the 64-byte seed, each key and
+    chain code, and the HMAC states. Library mnemonic code (coins-bip39) leaves the seed and
+    chain codes in memory.
+  - The Rust library's global allocator wipes every heap block before freeing it. That covers
+    the buffers UniFFI moves the phrase in, and heap copies made inside dependencies.
+  - The app never makes a `String` of a stored or new phrase: it is drawn one character at a
+    time from the bytes, the backup check compares typed words against the bytes, and the bytes
+    are wiped on Hide, on leaving the screen, and once stored. A typed phrase (import, restore)
+    is a `String` in the text field; that can't be avoided on Android.
+  - Not in our hands: the plaintext the Android Keystore returns passes through system buffers.
 
 ### 10.3 Endpoints and relays
 - **Chain endpoints:** a settings screen lists `(chain id, name, URL)`. Adding one calls
@@ -1181,8 +1195,6 @@ the share sheet. It is never uploaded. Removing a signer keeps its audit entries
 - The same connect protocol and messages as Android, and the same display model and danger flags.
 
 ### 12.5 Signers
-- **Import an existing mnemonic** ("external signer") in release builds, with a warning that a
-  phrase that was ever typed or stored elsewhere is only as safe as wherever it was.
 - **More accounts per signer** (derive index 1, 2, …), each with its own label and connections.
 
 ### 12.6 Later (unscheduled)
@@ -1310,7 +1322,7 @@ It ships as a separate product that shares FURY's foundations.
 | Area | FURY | Blox |
 |---|---|---|
 | Seed | BIP-39, NIP-06 identity at `m/44'/1237'/0'/0/0` | Same mnemonic format, one per signer |
-| EVM keys | `m/44'/60'/0'/0/0` | The same path. A FURY seed imported as a Blox signer (v2) shows the same address. |
+| EVM keys | `m/44'/60'/0'/0/0` | The same path. A FURY seed imported as a Blox signer shows the same address. |
 | Architecture | Rust core, UniFFI, thin Kotlin/Swift shells (M9) | The same (`blox-ffi`, §10.1) |
 | In-memory key handling | `WalletKey`: heap, `mlock`, zeroize on drop, no silent downgrade | `blox-evm` adopts the same model (or depends on `fury-core::identity`) |
 | Push (Blox v2) | Contentless pings, UnifiedPush first (M5.5) | Same design; one push proxy can serve both |
@@ -1362,7 +1374,7 @@ same seed shows different Bitcoin addresses in the two apps.
 | Blox | FURY | Note |
 |---|---|---|
 | MVP: Android keystore, EVM, connections | M4 (storage), M9 (mobile) | Blox can ship on its own. Its Android key storage (§10.2) is a concrete design for FURY M9's "Android Keystore wraps the mnemonic key". |
-| v2: push, policies, simulation, import, iOS | M5.5 (push), M9 (iOS) | Share the push proxy and UniFFI/iOS work. Evaluate the Nostr transport (§15.3). |
+| v2: push, policies, simulation, iOS | M5.5 (push), M9 (iOS) | Share the push proxy and UniFFI/iOS work. Evaluate the Nostr transport (§15.3). |
 | v3: Bitcoin, Solana, other chains | FURY BTC keys (M1) | Settle the BTC derivation path (§15.1). |
 | Later: keystore as the Nostr signer | M5+ | Needs the policy class (§15.2). |
 

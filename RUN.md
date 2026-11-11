@@ -102,7 +102,7 @@ Debug builds of the app accept plain-HTTP relays and endpoints; release builds r
 
 ### 4. Set up the app
 
-1. **Add a signer.** Debug builds can import anvil's test phrase
+1. **Add a signer.** Choose "Import an existing one" and enter anvil's test phrase
    (`test test test test test test test test test test test junk`), whose first account
    `0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266` anvil funds. **Never use this phrase for
    anything real.**

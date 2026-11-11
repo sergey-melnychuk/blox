@@ -10,11 +10,22 @@ import androidx.camera.core.ImageProxy
 import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Button
+import androidx.compose.foundation.layout.systemBarsPadding
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -25,6 +36,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -52,10 +64,29 @@ fun Scanner(onResult: (String) -> Unit, onCancel: () -> Unit) {
     val request = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted = it }
     LaunchedEffect(Unit) { if (!granted) request.launch(Manifest.permission.CAMERA) }
 
-    Box(Modifier.fillMaxSize()) {
-        if (granted) CameraPreview(onResult) else Text("Camera permission is needed to scan.", Modifier.padding(24.dp))
-        Column(Modifier.align(Alignment.BottomCenter).padding(24.dp)) {
-            Button(onClick = onCancel) { Text("Cancel") }
+    Box(Modifier.fillMaxSize().background(Color.Black)) {
+        if (granted) {
+            CameraPreview(onResult)
+            // The square to aim at.
+            Box(
+                Modifier
+                    .align(Alignment.Center)
+                    .fillMaxWidth(0.7f)
+                    .aspectRatio(1f)
+                    .border(3.dp, Color.White.copy(alpha = 0.9f), RoundedCornerShape(24.dp)),
+            )
+        }
+        Column(Modifier.fillMaxWidth().align(Alignment.BottomCenter).systemBarsPadding().padding(Gutter)) {
+            if (!granted) {
+                PrimaryButton("Allow camera", { request.launch(Manifest.permission.CAMERA) })
+                Spacer(Modifier.height(8.dp))
+            }
+            OutlinedButton(
+                onClick = onCancel,
+                modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White),
+                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.7f)),
+            ) { Text("Cancel") }
         }
     }
 }

@@ -1,21 +1,12 @@
 package wtf.oxff.blox.ui
 
 import android.content.Intent
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Share
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -23,12 +14,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -52,89 +39,124 @@ fun SettingsScreen(app: BloxApp, onBack: () -> Unit) {
     var chain by remember { mutableStateOf("") }
     var url by remember { mutableStateOf("") }
     var relayUrl by remember { mutableStateOf("") }
-    var message by remember { mutableStateOf<String?>(null) }
+    var message by remember { mutableStateOf<Pair<String, Tone>?>(null) }
+    var checking by remember { mutableStateOf(false) }
 
     fun allowed(u: String) = u.startsWith("https://") || (BuildConfig.DEBUG && u.startsWith("http://"))
+    val scheme = if (BuildConfig.DEBUG) "Must start with https:// or http://" else "Must start with https://"
 
-    Column(Modifier.padding(24.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        TextButton(onClick = onBack) { Text("‹ Back") }
-        Text("Settings", style = MaterialTheme.typography.headlineMedium)
-        message?.let { Text(it, color = MaterialTheme.colorScheme.tertiary) }
+    BloxScreen("Settings", onBack = onBack) {
+        message?.let { (text, tone) -> Notice(text, tone, onClick = { message = null }) }
 
-        Text("Network endpoints", style = MaterialTheme.typography.titleMedium)
-        Text("Transactions are filled and sent through these. Requests never choose them.", style = MaterialTheme.typography.bodySmall)
-        endpoints.forEach { e ->
-            Card(Modifier.fillMaxWidth()) {
-                Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Column(Modifier.weight(1f)) {
-                        Text("${e.name} (eip155:${e.chainId})")
-                        Text(relayHost(e.url), fontFamily = FontFamily.Monospace, style = MaterialTheme.typography.bodySmall)
-                    }
-                    TextButton(onClick = {
-                        app.settings.removeEndpoint(e.chainId)
-                        refresh++
-                    }) { Text("Remove") }
-                }
-            }
-        }
-        OutlinedTextField(chain, { chain = it.filter(Char::isDigit) }, label = { Text("Chain id (e.g. 8453)") }, singleLine = true,
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
-        OutlinedTextField(url, { url = it.trim() }, label = { Text("Endpoint URL") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-        Button(
-            enabled = chain.isNotEmpty() && allowed(url),
-            onClick = {
-                val id = chain.toLongOrNull() ?: return@Button
-                scope.launch {
-                    val actual = runCatching { withContext(Dispatchers.IO) { endpointChainId(HttpEndpoint(url)) } }
-                    message = actual.fold(
-                        onSuccess = {
-                            if (it.toLong() == id) {
-                                app.settings.putEndpoint(EndpointConfig(id, chainName(id.toULong()) ?: "Chain $id", url))
-                                chain = ""
-                                url = ""
-                                refresh++
-                                "Endpoint added"
-                            } else {
-                                "That endpoint is on chain $it, not $id"
-                            }
-                        },
-                        onFailure = { "Could not reach the endpoint: ${it.message}" },
-                    )
-                }
-            },
-        ) { Text("Check and add") }
-        if (!BuildConfig.DEBUG) Text("Endpoints must use HTTPS.", style = MaterialTheme.typography.bodySmall)
-
-        Text("Relays", style = MaterialTheme.typography.titleMedium)
-        relays.forEach { r ->
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(relayHost(r), Modifier.weight(1f), fontFamily = FontFamily.Monospace)
-                if (r != DEFAULT_RELAY) {
-                    TextButton(onClick = {
-                        scope.launch {
-                            app.keystore.removeRelay(r)
+        Section("Endpoints") {
+            if (endpoints.isEmpty()) Item("None")
+            Rows(endpoints) { e ->
+                Item(
+                    e.name,
+                    overline = "eip155:${e.chainId}",
+                    supporting = relayHost(e.url),
+                    monoSupporting = true,
+                    trailing = {
+                        IconButton(onClick = {
+                            app.settings.removeEndpoint(e.chainId)
                             refresh++
-                        }
-                    }) { Text("Remove") }
-                }
+                        }) { Icon(Icons.Filled.Close, contentDescription = "Remove ${e.name}") }
+                    },
+                )
+            }
+            RowDivider()
+            SectionBody {
+                Field(
+                    chain,
+                    { chain = it.filter(Char::isDigit) },
+                    "Chain id",
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                )
+                Field(
+                    url,
+                    { url = it.trim() },
+                    "URL",
+                    mono = true,
+                    isError = url.isNotEmpty() && !allowed(url),
+                    supporting = if (url.isNotEmpty() && !allowed(url)) scheme else null,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, autoCorrectEnabled = false),
+                )
+                SecondaryButton("Add", enabled = chain.isNotEmpty() && allowed(url) && !checking, onClick = {
+                    val id = chain.toLongOrNull() ?: return@SecondaryButton
+                    checking = true
+                    scope.launch {
+                        val actual = runCatching { withContext(Dispatchers.IO) { endpointChainId(HttpEndpoint(url)) } }
+                        checking = false
+                        message = actual.fold(
+                            onSuccess = {
+                                if (it.toLong() == id) {
+                                    app.settings.putEndpoint(EndpointConfig(id, chainName(id.toULong()) ?: "Chain $id", url))
+                                    chain = ""
+                                    url = ""
+                                    refresh++
+                                    "Endpoint added" to Tone.Info
+                                } else {
+                                    "That endpoint is on chain $it, not $id" to Tone.Danger
+                                }
+                            },
+                            onFailure = { "Could not reach the endpoint: ${it.message}" to Tone.Danger },
+                        )
+                    }
+                })
             }
         }
-        Text("Removing a relay ends the connections that use it.", style = MaterialTheme.typography.bodySmall)
-        OutlinedTextField(relayUrl, { relayUrl = it.trim() }, label = { Text("Relay URL") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-        OutlinedButton(enabled = allowed(relayUrl), onClick = {
-            message = runCatching {
-                app.settings.addRelay(relayUrl)
-                relayUrl = ""
-                refresh++
-                "Relay added"
-            }.getOrElse { "Not a valid relay URL" }
-        }) { Text("Add relay") }
 
-        Text("Activity", style = MaterialTheme.typography.titleMedium)
-        OutlinedButton(onClick = {
-            val text = runCatching { app.audit.file().readText() }.getOrDefault("")
-            val send = Intent(Intent.ACTION_SEND).setType("application/json").putExtra(Intent.EXTRA_TEXT, text)
-            context.startActivity(Intent.createChooser(send, "Export audit log"))
-        }) { Text("Export audit log") }
+        Section("Relays", footer = "Removing a relay ends the connections that use it.") {
+            Rows(relays) { r ->
+                Item(
+                    relayHost(r),
+                    supporting = null,
+                    trailing = if (r != DEFAULT_RELAY) {
+                        {
+                            IconButton(onClick = {
+                                scope.launch {
+                                    app.keystore.removeRelay(r)
+                                    refresh++
+                                }
+                            }) { Icon(Icons.Filled.Close, contentDescription = "Remove ${relayHost(r)}") }
+                        }
+                    } else {
+                        null
+                    },
+                )
+            }
+            RowDivider()
+            SectionBody {
+                Field(
+                    relayUrl,
+                    { relayUrl = it.trim() },
+                    "URL",
+                    mono = true,
+                    isError = relayUrl.isNotEmpty() && !allowed(relayUrl),
+                    supporting = if (relayUrl.isNotEmpty() && !allowed(relayUrl)) scheme else null,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, autoCorrectEnabled = false),
+                )
+                SecondaryButton("Add", enabled = allowed(relayUrl), onClick = {
+                    message = runCatching {
+                        app.settings.addRelay(relayUrl)
+                        relayUrl = ""
+                        refresh++
+                        "Relay added" to Tone.Info
+                    }.getOrElse { "Not a valid relay URL" to Tone.Danger }
+                })
+            }
+        }
+
+        Section {
+            Item(
+                "Export audit log",
+                trailing = { Icon(Icons.Filled.Share, contentDescription = null) },
+                onClick = {
+                    val text = runCatching { app.audit.file().readText() }.getOrDefault("")
+                    val send = Intent(Intent.ACTION_SEND).setType("application/json").putExtra(Intent.EXTRA_TEXT, text)
+                    context.startActivity(Intent.createChooser(send, "Export audit log"))
+                },
+            )
+        }
     }
 }

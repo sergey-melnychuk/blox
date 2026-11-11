@@ -48,14 +48,7 @@ relay URLs, request signatures, the offer, the mnemonic's account, `acceptOffer`
 round trip (open the vectors' `sign_request`, redelivery, review with a Kotlin `EndpointRpc`,
 approve, broadcast, a JSON-RPC error thrown from Kotlin, answer).
 
-```sh
-JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home" ./gradlew :app:connectedDebugAndroidTest
-```
-
-Check the output for `Tests run` / `OK`: Gradle reports `BUILD SUCCESSFUL` even when the APKs
-fail to install. On some phones, enable *Developer options → Install via USB* and
-*USB debugging (Security settings)*; without the latter the test APK install fails
-(`INSTALL_GRANT_RUNTIME_PERMISSIONS`). Or install both APKs and run the runner by hand:
+Install both APKs over what is there (`-r` keeps the app's data) and run the runner:
 
 ```sh
 ./gradlew :app:assembleDebug :app:assembleDebugAndroidTest
@@ -64,14 +57,23 @@ adb install -r -t app/build/outputs/apk/androidTest/debug/app-debug-androidTest.
 adb shell am instrument -w -r wtf.oxff.blox.test/androidx.test.runner.AndroidJUnitRunner
 ```
 
+> **Don't run `./gradlew :app:connectedDebugAndroidTest` on a phone with signers.** It
+> uninstalls the app after the run (also when an install fails), which deletes its Android
+> Keystore keys: every signer on the phone is gone unless its recovery phrase is written
+> down. Gradle also prints `BUILD SUCCESSFUL` when the APKs failed to install.
+
 ## Trying it locally
 
 See [RUN.md](../RUN.md), section "With the Android app": anvil and a relay on your computer,
 the app on a phone on the same Wi-Fi, and the example requester (or the web demo in
-`sdk/js/demo`) to connect and send. Debug builds accept plain HTTP for relays and endpoints and
-can import anvil's test phrase (`test test test test test test test test test test test junk`;
-**never use it for anything real**). Release builds refuse plain HTTP
-(`network_security_config.xml`) and offer no import.
+`sdk/js/demo`) to connect and send. Import anvil's test phrase as a signer
+(`test test test test test test test test test test test junk`; **never use it for anything
+real**). Debug builds accept plain HTTP for relays and endpoints; release builds refuse it
+(`network_security_config.xml`).
+
+The screens keep `FLAG_SECURE` (no screenshots or recording). For work on the UI, a debug build
+made with `./gradlew :app:assembleDebug -Pblox.screenshots` leaves it off, so
+`adb exec-out screencap -p` works. Release builds always set it.
 
 ## Code layout
 

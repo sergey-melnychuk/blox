@@ -37,6 +37,12 @@ android {
         release {
             isMinifyEnabled = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            buildConfigField("boolean", "ALLOW_SCREENSHOTS", "false")
+        }
+        debug {
+            // `-Pblox.screenshots` drops FLAG_SECURE so screens can be captured while working
+            // on the UI. Debug builds only; never on by default.
+            buildConfigField("boolean", "ALLOW_SCREENSHOTS", (findProperty("blox.screenshots") != null).toString())
         }
     }
     compileOptions {
@@ -96,6 +102,7 @@ dependencies {
     implementation(bom)
     implementation(libs.compose.ui)
     implementation(libs.compose.material3)
+    implementation(libs.compose.icons)
     implementation(libs.compose.tooling.preview)
     debugImplementation(libs.compose.tooling)
     implementation(libs.activity.compose)

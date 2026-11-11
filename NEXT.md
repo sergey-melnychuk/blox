@@ -31,7 +31,7 @@ not been checked on a device yet. Step-by-step status, notes and what's left: PL
 `[~]` = written and building, not yet checked on a device.
 
 - [~] Signers: add (generate + backup check), remove (ends connections, auth + typed confirmation, deletes the wrapping key and transport keys), view phrase; one wrapping key per signer; transport keys under `blox.transport.wrap.v1`
-- [~] Import only in debug builds (anvil test phrase); restore of existing signers in all builds
+- [~] Import an existing phrase in every build (a separate, less safe but portable way to add a signer, marked as imported); restore of existing signers
 - [~] Connect screen (signer picker, remember-for, biometric, statement signature); connection list per signer with disconnect
 - [~] Reading inboxes in the foreground; requests grouped by connection, cancelled and duplicate-looking requests; stored answers for redelivered requests (§10.6)
 - [~] Settings: chain endpoints (checked with `eth_chainId`), relay list with the consent prompt
@@ -41,7 +41,7 @@ not been checked on a device yet. Step-by-step status, notes and what's left: PL
 - [x] Build the app
 - [x] An instrumented test of the bindings against `test-vectors/` (passes on a test phone)
 - [ ] On-device checks (§13.4)
-- [ ] Carried over: the recovery phrase held as a `String` in Compose state
+- [x] Key material wiped end to end: derivation written out with zeroizing intermediates (`blox-evm`), a wiping allocator in `blox-ffi` (UniFFI buffers), no `String` of a stored or new phrase in the app (drawn from bytes); typed phrases stay `String`s (Android text fields)
 
 ## M6: Web SDK
 
@@ -58,5 +58,5 @@ not been checked on a device yet. Step-by-step status, notes and what's left: PL
 
 ## Later
 
-- v2 (BLOX.md §12): push and a background listener, per-connection policies, simulation with yevm (license first), importing mnemonics in release builds, more accounts per signer, iOS
+- v2 (BLOX.md §12): push and a background listener, per-connection policies, simulation with yevm (license first), more accounts per signer, iOS
 - yevm-gate: use the SDK instead of `blox-adapter`

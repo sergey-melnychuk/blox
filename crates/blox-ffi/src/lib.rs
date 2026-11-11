@@ -6,7 +6,9 @@
 //! the app implements over OkHttp), display, signing and relay request signatures.
 //!
 //! Secrets cross the boundary as byte arrays (never `String`, which can't be wiped on the
-//! JVM). Rust wipes its copies; callers must wipe theirs. Times are relay time (§4.8).
+//! JVM). Rust wipes its copies, and the allocator (`wipe`) wipes every heap block it frees,
+//! including the buffers UniFFI moves them in; callers must wipe theirs. Times are relay
+//! time (§4.8).
 
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
@@ -27,6 +29,8 @@ use blox_proto::{b64, relay_url, reqsig};
 use zeroize::Zeroizing;
 
 uniffi::setup_scaffolding!();
+
+mod wipe;
 
 #[derive(Debug, thiserror::Error, uniffi::Error)]
 #[uniffi(flat_error)]

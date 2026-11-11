@@ -286,7 +286,7 @@ listed below while they exist.
     (relay consent → signer + remember-for → biometric → bind with ticket → wait for
     `bound`, revoke after 120 s), disconnect, signer and relay removal.
   - UI: home (requests grouped by connection, signers, Scan, status line), add signer
-    (backup check; import only in debug builds), connect, review (duplicate notice,
+    (create with a backup check, or import an existing phrase), connect, review (duplicate notice,
     withdrawn, would-fail, Retry), signer (connections with Disconnect, view phrase,
     restore, remove with typed confirmation), settings (endpoints checked with
     `eth_chainId`, relays, audit export).
@@ -296,14 +296,32 @@ listed below while they exist.
     `Throwable.message` in Kotlin, so `RpcFailure`'s field is now `detail` (FFI only; the
     wire format is unchanged). `Scanner.kt` uses ZXing's `MultiFormatReader`, the only reader
     that honours `ALSO_INVERTED` (light-on-dark codes).
+  - **Import and UI pass:** importing an existing phrase is a separate way to add a signer
+    in every build (less safe, portable; BLOX.md §10.2), stored with `imported` and shown on
+    the signer. The screens share one layout (`ui/Components.kt`): a top bar with Back, content
+    in one 20 dp gutter, the screen's actions pinned at the bottom above the keyboard, titled
+    sections on cards, full-width fields, label/value rows with one label column, a two-column
+    phrase grid, and a fixed light/dark palette (`ui/Theme.kt`). Edge-to-edge with transparent
+    bars. `-Pblox.screenshots` (debug only) drops `FLAG_SECURE` for UI work. Captions cut to
+    the minimum (titles and choices say it). The backup check can be skipped.
+  - **Key material wiped** (BLOX.md §10.2): `blox_evm::sign::signer_from_mnemonic` now
+    derives itself (bip39 for the word list and checksum, PBKDF2-HMAC-SHA512 and BIP-32 on
+    `hmac`/`sha2` with `zeroize` and `k256`) instead of alloy's `MnemonicBuilder`, whose
+    coins-bip39 leaves the seed and chain codes in memory; a test checks it gives alloy's keys
+    for 12/24-word phrases at several indices. `blox-ffi` has a global allocator that wipes
+    every block on free (UniFFI's buffers carry the phrase). The app draws phrases from bytes
+    (`SecretPhrase`, one character at a time, so neither a `String` nor the text layout cache
+    holds a word) and wipes them on Hide or leaving. The instrumented test passes on the phone
+    with both.
   - **Instrumented test** (`app/src/androidTest/.../BindingsVectorsTest.kt`, 6 tests, passed
     on a test phone): the generated bindings against
     `test-vectors/proto-v1.json` (relay URLs, request signatures, offer, mnemonic → account,
     `acceptOffer` and `abandonConnect`, and a request round trip: open the keystore-bound
     `sign_request`, redelivery, review with a Kotlin `EndpointRpc`, approve, broadcast,
     a JSON-RPC error thrown from Kotlin becomes `failed`, answer). The keystore's X25519 key is
-    derived in Kotlin with RFC 9180 DeriveKeyPair from the vectors' IKM. MIUI needs
-    *USB debugging (Security settings)* for Gradle's install (android/README.md).
+    derived in Kotlin with RFC 9180 DeriveKeyPair from the vectors' IKM. Run it with
+    `adb install -r` and `am instrument`, not `connectedDebugAndroidTest`: that task uninstalls
+    the app afterwards, which deletes every signer's key (it did, once; android/README.md).
   - **Not done yet:** the other §13.4 device checks.
 - **6.1:** `sdk/js/src`: `bytes`, `b64`, `base45`, `pad`, `relayUrl`, `keys` (two backends),
   `hpke` (RFC 9180 auth / auth_psk on `@noble/hashes` HMAC + WebCrypto AES-GCM), `wire`

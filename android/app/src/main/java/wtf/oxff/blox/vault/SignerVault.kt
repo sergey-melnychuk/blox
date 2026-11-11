@@ -30,6 +30,11 @@ data class SignerInfo(
     val alias: String,
     /** Seed file, relative to noBackupFilesDir. */
     val file: String,
+    /**
+     * The phrase was typed in rather than made on this phone: it is only as safe as wherever
+     * else it was ever written or stored (§10.2).
+     */
+    val imported: Boolean = false,
 )
 
 /**
@@ -56,7 +61,10 @@ class SignerVault(private val context: Context) {
         val arr = JSONArray(prefs.getString(KEY, "[]"))
         return List(arr.length()) { i ->
             val o = arr.getJSONObject(i)
-            SignerInfo(o.getString("id"), o.getString("label"), o.getString("address"), o.getString("alias"), o.getString("file"))
+            SignerInfo(
+                o.getString("id"), o.getString("label"), o.getString("address"), o.getString("alias"), o.getString("file"),
+                o.optBoolean("imported", false),
+            )
         }
     }
 
@@ -65,7 +73,10 @@ class SignerVault(private val context: Context) {
     private fun save(list: List<SignerInfo>) {
         val arr = JSONArray()
         list.forEach {
-            arr.put(JSONObject().put("id", it.id).put("label", it.label).put("address", it.address).put("alias", it.alias).put("file", it.file))
+            arr.put(
+                JSONObject().put("id", it.id).put("label", it.label).put("address", it.address).put("alias", it.alias)
+                    .put("file", it.file).put("imported", it.imported),
+            )
         }
         prefs.edit().putString(KEY, arr.toString()).apply()
     }
@@ -87,16 +98,16 @@ class SignerVault(private val context: Context) {
 
     /**
      * Step 2: encrypts `phrase` with the unlocked cipher, creates the transport keys and lists
-     * the signer. The caller wipes `phrase`.
+     * the signer. `imported` marks a phrase typed in rather than made here. The caller wipes `phrase`.
      * @throws IllegalStateException if a signer with the same address exists.
      */
-    fun add(id: String, label: String, unlocked: Cipher, phrase: ByteArray): SignerInfo {
+    fun add(id: String, label: String, unlocked: Cipher, phrase: ByteArray, imported: Boolean): SignerInfo {
         val address = deriveEvmAddresses(phrase, 0u, 1u).first()
         if (list().any { it.address.equals(address, ignoreCase = true) }) {
             keyStore.deleteEntry("$SEED_ALIAS_PREFIX$id")
             throw IllegalStateException("This signer is already on the phone")
         }
-        val info = SignerInfo(id, label, address, "$SEED_ALIAS_PREFIX$id", "seeds/$id.bin")
+        val info = SignerInfo(id, label, address, "$SEED_ALIAS_PREFIX$id", "seeds/$id.bin", imported)
         writeSeed(info, unlocked, phrase)
         writeTransportKeys(id)
         save(list() + info)

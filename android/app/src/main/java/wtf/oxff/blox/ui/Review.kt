@@ -1,25 +1,14 @@
 package wtf.oxff.blox.ui
 
 import android.security.keystore.KeyPermanentlyInvalidatedException
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -34,10 +23,8 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
-import uniffi.blox_ffi.UiDisplay
 import wtf.oxff.blox.BloxApp
 import wtf.oxff.blox.MainActivity
-import wtf.oxff.blox.keystore.Keystore.Pending
 import wtf.oxff.blox.keystore.Keystore.ReviewState
 import wtf.oxff.blox.keystore.describe
 import wtf.oxff.blox.vault.unlock
@@ -50,120 +37,111 @@ fun ReviewScreen(activity: MainActivity, app: BloxApp, connectionId: String, onB
     LaunchedEffect(items.isEmpty()) { if (items.isEmpty()) onBack() }
     val p = items.firstOrNull() ?: return
     val signer = app.vault.get(p.signerId)
-
-    Column(Modifier.padding(24.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        TextButton(onClick = onBack) { Text("‹ Back") }
-        Text(p.label, style = MaterialTheme.typography.titleLarge)
-        val origin = listOfNotNull(p.request.originName(), p.request.originUrl()).joinToString(" · ")
-        if (origin.isNotEmpty()) {
-            Text("Claims to be from: $origin", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline)
-        }
-        if (items.size > 1) {
-            Text(
-                "${p.label} sent ${items.size} requests. If you retried on the site, the older one may be a duplicate.",
-                color = MaterialTheme.colorScheme.tertiary,
-            )
-        }
-        when (val st = p.state) {
-            ReviewState.Loading -> Row(verticalAlignment = Alignment.CenterVertically) {
-                CircularProgressIndicator()
-                Text("  Preparing…")
-            }
-            is ReviewState.Ready -> Ready(activity, app, p, st.display, signer?.label ?: "")
-            is ReviewState.WouldFail -> {
-                Text("This transaction would fail", style = MaterialTheme.typography.headlineSmall, color = MaterialTheme.colorScheme.error)
-                Text(st.message, fontFamily = FontFamily.Monospace, style = MaterialTheme.typography.bodySmall)
-                Button(onClick = { app.keystore.reject(p) }, Modifier.fillMaxWidth()) { Text("Reject") }
-            }
-            is ReviewState.Unreachable -> {
-                Text("The network endpoint can't be reached", style = MaterialTheme.typography.titleMedium)
-                Text(st.message, style = MaterialTheme.typography.bodySmall)
-                Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                    OutlinedButton(onClick = { app.keystore.reject(p) }, Modifier.weight(1f)) { Text("Reject") }
-                    Button(onClick = { app.keystore.review(p) }, Modifier.weight(1f)) { Text("Retry") }
-                }
-            }
-            ReviewState.Withdrawn -> Text("The site withdrew this request.", style = MaterialTheme.typography.titleMedium)
-            is ReviewState.Done -> Text(describe(st.response), style = MaterialTheme.typography.titleMedium)
-        }
-    }
-}
-
-@Composable
-private fun Ready(activity: MainActivity, app: BloxApp, p: Pending, display: UiDisplay, signerLabel: String) {
     val scope = rememberCoroutineScope()
+
+    // Per request: typed confirmations, the acknowledgement, and the approval in flight.
     var error by remember(p.requestId) { mutableStateOf<String?>(null) }
     var busy by remember(p.requestId) { mutableStateOf(false) }
-    val typed = remember(p.requestId) { display.dangers.map { mutableStateOf("") } }
     var acknowledged by remember(p.requestId) { mutableStateOf(false) }
+    val ready = p.state as? ReviewState.Ready
+    val typed = remember(p.requestId, ready != null) { ready?.display?.dangers?.map { mutableStateOf("") } ?: emptyList() }
 
-    Text(display.title, style = MaterialTheme.typography.headlineSmall)
-    display.dangers.forEachIndexed { i, d ->
-        Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)) {
-            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(d.message, color = MaterialTheme.colorScheme.onErrorContainer)
-                d.confirm?.let { code ->
-                    OutlinedTextField(
-                        value = typed[i].value,
-                        onValueChange = { typed[i].value = it.trim() },
-                        label = { Text("Type $code to continue") },
-                        singleLine = true,
-                        keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Characters, autoCorrectEnabled = false),
-                    )
-                }
+    val bottom: (@Composable ColumnScope.() -> Unit)? = when (val st = p.state) {
+        is ReviewState.Ready -> {
+            val display = st.display
+            val needsAck = display.dangers.any { it.confirm == null }
+            val confirmed = display.dangers.withIndex().all { (i, d) -> d.confirm == null || typed.getOrNull(i)?.value.equals(d.confirm, ignoreCase = true) } &&
+                (!needsAck || acknowledged)
+            ({
+                ButtonPair(
+                    "Reject", { app.keystore.reject(p) },
+                    "Approve", {
+                        scope.launch {
+                            busy = true
+                            try {
+                                val cipher = activity.unlock(app.vault.decryptCipher(p.signerId), "Approve with ${signer?.label ?: ""}", display.title)
+                                    ?: return@launch
+                                app.keystore.approve(p, app.vault.open(p.signerId, cipher))
+                            } catch (e: KeyPermanentlyInvalidatedException) {
+                                error = "Your phone's security settings changed. Restore this signer from its recovery phrase."
+                            } catch (e: Exception) {
+                                error = "Could not sign: ${e.message}"
+                            } finally {
+                                busy = false
+                            }
+                        }
+                    },
+                    primaryEnabled = confirmed && !busy,
+                    secondaryEnabled = !busy,
+                )
+            })
+        }
+        is ReviewState.WouldFail -> ({ PrimaryButton("Reject", { app.keystore.reject(p) }) })
+        is ReviewState.Unreachable -> ({ ButtonPair("Reject", { app.keystore.reject(p) }, "Retry", { app.keystore.review(p) }) })
+        else -> null
+    }
+
+    BloxScreen(p.label, onBack = onBack, bottom = bottom) {
+        val origin = listOfNotNull(p.request.originName(), p.request.originUrl()).joinToString(" · ")
+        Section {
+            InfoRow("From", "${p.label} (claimed)")
+            if (origin.isNotEmpty()) {
+                RowDivider()
+                InfoRow("Page", origin)
             }
+            RowDivider()
+            InfoRow("Signer", signer?.let { "${it.label} · ${shortAddress(it.address)}" } ?: "")
         }
-    }
-    val needsAck = display.dangers.any { it.confirm == null }
-    if (needsAck) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Checkbox(checked = acknowledged, onCheckedChange = { acknowledged = it })
-            Text("I understand the risk")
+        if (items.size > 1) {
+            Notice("${items.size} requests: the older one may be a duplicate.", Tone.Warning)
         }
-    }
-    display.warnings.forEach { Text("⚠ $it", color = MaterialTheme.colorScheme.tertiary) }
-
-    Card(Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            display.fields.forEach { f ->
-                var expanded by remember(f) { mutableStateOf(false) }
-                Column(Modifier.clickable(enabled = f.full != null) { expanded = !expanded }) {
-                    Text(f.label, style = MaterialTheme.typography.labelMedium)
-                    Text(if (expanded) f.full ?: f.value else f.value, fontFamily = FontFamily.Monospace, style = MaterialTheme.typography.bodyMedium)
+        when (val st = p.state) {
+            ReviewState.Loading -> Busy("Preparing…")
+            is ReviewState.Ready -> {
+                val display = st.display
+                Text(display.title, style = MaterialTheme.typography.headlineSmall)
+                display.dangers.forEachIndexed { i, d ->
+                    Notice(d.message, Tone.Danger, extra = d.confirm?.let { code ->
+                        {
+                            Field(
+                                typed.getOrNull(i)?.value ?: "",
+                                { v -> typed.getOrNull(i)?.value = v.trim() },
+                                "Type $code to continue",
+                                mono = true,
+                                keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Characters, autoCorrectEnabled = false),
+                            )
+                        }
+                    })
                 }
-            }
-        }
-    }
-    display.decoded?.let {
-        Card(Modifier.fillMaxWidth()) {
-            Text(it, Modifier.padding(16.dp), fontFamily = FontFamily.Monospace, style = MaterialTheme.typography.bodySmall)
-        }
-    }
-    error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-
-    val confirmed = display.dangers.withIndex().all { (i, d) -> d.confirm == null || typed[i].value.equals(d.confirm, ignoreCase = true) } &&
-        (!needsAck || acknowledged)
-    Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-        OutlinedButton(onClick = { app.keystore.reject(p) }, enabled = !busy, modifier = Modifier.weight(1f)) { Text("Reject") }
-        Button(
-            enabled = confirmed && !busy,
-            modifier = Modifier.weight(1f),
-            onClick = {
-                scope.launch {
-                    busy = true
-                    try {
-                        val cipher = activity.unlock(app.vault.decryptCipher(p.signerId), "Approve with $signerLabel", display.title)
-                            ?: return@launch
-                        app.keystore.approve(p, app.vault.open(p.signerId, cipher))
-                    } catch (e: KeyPermanentlyInvalidatedException) {
-                        error = "Your phone's security settings changed. Restore this signer from its recovery phrase."
-                    } catch (e: Exception) {
-                        error = "Could not sign: ${e.message}"
-                    } finally {
-                        busy = false
+                if (display.dangers.any { it.confirm == null }) {
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        Checkbox(checked = acknowledged, onCheckedChange = { acknowledged = it })
+                        Text("I understand the risk", Modifier.padding(start = 4.dp))
                     }
                 }
-            },
-        ) { Text("Approve") }
+                display.warnings.forEach { Notice(it, Tone.Warning) }
+                Section {
+                    Rows(display.fields) { f ->
+                        var expanded by remember(f) { mutableStateOf(false) }
+                        InfoRow(
+                            f.label,
+                            if (expanded) f.full ?: f.value else f.value,
+                            mono = true,
+                            onClick = f.full?.let { { expanded = !expanded } },
+                        )
+                    }
+                }
+                display.decoded?.let {
+                    Section("Decoded") {
+                        Text(it, Modifier.padding(16.dp), fontFamily = FontFamily.Monospace, style = MaterialTheme.typography.bodySmall)
+                    }
+                }
+                error?.let { Notice(it, Tone.Danger) }
+            }
+            is ReviewState.WouldFail -> Notice(st.message, Tone.Danger, title = "Would fail")
+            is ReviewState.Unreachable -> Notice(st.message, Tone.Warning, title = "Endpoint unreachable")
+            ReviewState.Withdrawn -> Notice("Withdrawn by the site")
+            is ReviewState.Done -> Notice(describe(st.response))
+        }
     }
 }
