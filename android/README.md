@@ -41,37 +41,48 @@ to its full path, e.g. `CARGO=$HOME/.cargo/bin/cargo`. The build looks there by 
 
 Nothing generated is committed. Change Rust code, rebuild the app, and the bindings follow.
 
-## Trying it against a local relay
+## Trying it locally
 
-A debug build allows plain HTTP. On a phone on the same Wi-Fi as your computer:
+See [RUN.md](../RUN.md), section "With the Android app": anvil and a relay on your computer,
+the app on a phone on the same Wi-Fi, and the example requester (or the web demo in
+`sdk/js/demo`) to connect and send. Debug builds accept plain HTTP for relays and endpoints and
+can import anvil's test phrase (`test test test test test test test test test test test junk`;
+**never use it for anything real**). Release builds refuse plain HTTP
+(`network_security_config.xml`) and offer no import.
 
-```sh
-# on the computer (replace my-computer.lan with its LAN address)
-BLOX_LISTEN=:8080 cargo run -p blox-relay
-anvil
-cargo run -p blox-cli --bin blox -- rpc --upstream http://localhost:8545 \
-    --relay http://my-computer.lan:8080 --listen localhost:8546
-cast send --unlocked --from <your address> <to> --value 1 --rpc-url http://localhost:8546 --rpc-timeout 300
-```
+## Code layout
 
-Scan the QR code the `blox rpc` terminal prints. To test with anvil's funded accounts, import
-anvil's test phrase in the app: `test test test test test test test test test test test junk`.
-**Never use that phrase for anything real.**
+- `vault/SignerVault.kt`: signers; one Android Keystore wrapping key per seed
+  (`blox.seed.wrap.v1.<id>`, authentication for every use), transport keys under
+  `blox.transport.wrap.v1` (no authentication), restore, removal. Migrates the single seed of
+  earlier builds as the signer "Main". `vault/Biometric.kt`: BiometricPrompt with a CryptoObject.
+- `store/Stores.kt`: settings (endpoints, relays), connections, stored answers (10 minutes,
+  written before sending), the audit log (JSON lines).
+- `relay/RelayClient.kt`: the relay API with signed requests and relay time.
+  `relay/HttpEndpoint.kt`: the `EndpointRpc` foreign trait over OkHttp.
+- `keystore/Keystore.kt`: inbox readers per (relay, signer), the connect flow, request review,
+  approval, broadcast and answers, cancel, unbind, disconnect.
+- `ui/`: home, add signer, connect, review, signer, settings, scanner.
 
-Release builds refuse plain HTTP (`network_security_config.xml`) and the relay URL must be HTTPS.
+All protocol, decoding, filling and signing logic is in Rust (`crates/blox-ffi`); the API is
+described at the top of `crates/blox-ffi/src/lib.rs` and exercised by its tests.
 
-## What to verify on a device (M3 gates, BLOX.md §13.4)
+## What to verify on a device (BLOX.md §13.4)
 
-- [ ] Key creation reports StrongBox or TEE (the home screen shows which)
+- [ ] The app builds (it was written without the Android SDK; expect small compiler fixes)
+- [ ] Adding a signer reports StrongBox or TEE; several signers; removing one deletes its key
 - [ ] Approve works with fingerprint, face (class 3) and the device-PIN fallback (API 30+)
-- [ ] Removing the screen lock invalidates the key, and restoring from the phrase gives the same addresses
-- [ ] The terminal QR code scans from dark and light terminal themes
+- [ ] Removing the screen lock invalidates the seed keys; restoring each signer from its phrase gives the same address; connections keep working
+- [ ] Connect: unknown-relay prompt, signer picker, remember-for, "already used" on a reused QR code
+- [ ] Requests appear when the app opens (within 5 minutes), grouped by site; send, sign_tx, messages; would-fail, no-endpoint, withdrawn
+- [ ] Disconnect from the phone and from the site
 - [ ] Screenshots and screen recording are blocked on every screen
-- [ ] Leaving the app for more than 30 s ends the session
+- [ ] The app contacts only its relays and configured endpoints
 
-## Not in the scaffold yet
+## Not done yet
 
-- Audit log (Room) — §10.8
-- Adding more accounts (derive index 1, 2, …) from the home screen
-- Reproducible release builds and signing setup — §10.1
+- An instrumented test of the bindings against `test-vectors/`
+- Audit log in Room (currently JSON lines), its viewer, and export as a file
+- More accounts per signer (v2), push (v2)
+- Reproducible release builds and signing setup (§10.1)
 - App icon and visual polish

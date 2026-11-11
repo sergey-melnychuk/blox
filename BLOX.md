@@ -1,8 +1,9 @@
 # Blox — Phone Keystore: Technical Specification
 
-> **For the coding agent:** This spec is self-contained. The repo already has a protocol, relay,
-> session code and an Android scaffold (§14.1, M1–M2); later milestones change them as described
-> here. Read every section before writing a line. The security properties in §3 and §4 are
+> **For the coding agent:** This spec is self-contained. The repo implements most of it
+> (M1–M4, the web SDK, the Rust side of M5; the Android app is written but
+> not yet built): PLAN.md has the status of every step and the implementation notes, NEXT.md the
+> milestones. Read every section before writing a line. The security properties in §3 and §4 are
 > non-negotiable; implementation notes marked *(hint)* are suggestions, not constraints.
 >
 > **Release scope:**
@@ -246,8 +247,8 @@ public key: the inbox ID is the key itself, as unpadded base64url (43 characters
 - There are two implementations:
   - `blox-proto` in Rust (`hpke`, `ed25519-dalek` crates *(hint)*), used by the relay, the Rust
     requester and, through UniFFI, the mobile apps (§10.1).
-  - The TypeScript SDK on WebCrypto (§9.1), so that browser keys can be non-extractable and the
-    SDK needs no wasm.
+  - The TypeScript SDK (§9.1): WebCrypto in browsers, so that keys can be non-extractable and
+    the SDK needs no wasm; `@noble/curves` with raw keys outside browsers (§9.6).
 
   `test-vectors/` pins the wire format; both must pass it, and CI runs the TypeScript SDK
   against the Rust relay and mock keystore.
@@ -701,8 +702,11 @@ Required, because the browser SDK talks to the relay directly.
   provider (§9.3) and, as the subpath export `@blox/sdk/wagmi`, a wagmi connector.
   - **The integration budget is one dependency and one import.** No wasm, no CSS import, no
     bundler plugin, no build step on the site's side.
-  - Crypto through WebCrypto: Ed25519, X25519, HMAC-SHA256 (for HKDF), AES-256-GCM, SHA-256.
-    All current browsers and Node have them. Keccak and secp256k1 recovery come from
+  - Crypto: in browsers, Ed25519 and X25519 through WebCrypto (non-extractable keys); outside
+    browsers, `@noble/curves` with raw keys (Deno 1.46's WebCrypto X25519 is broken, and a
+    backend keeps its keys as bytes anyway, §9.6). HKDF on `@noble/hashes` HMAC-SHA256;
+    AES-256-GCM and SHA-256 from WebCrypto, which every runtime has. Keccak and secp256k1
+    recovery come from
     `@noble/hashes` and `@noble/curves`, which sites using viem already ship *(hint)*.
   - wagmi is an optional peer dependency, needed only for `@blox/sdk/wagmi`.
   - Size target: 25 KB min+gzip on top of `@noble`.
@@ -779,7 +783,7 @@ everything (§1.3). The connector is a thin wrapper around the provider.
 | `eth_chainId` | the provider's current chain |
 | `wallet_switchEthereumChain` | Sets the current chain at once, with no round trip to the phone (every request carries its chain), and emits `chainChanged`. A chain the site didn't configure (the wagmi config's chains, or the keys of `transports` for `createProvider`; any chain if none are given) → 4902. |
 | `wallet_addEthereumChain` | Accepted with no effect: the phone's endpoints are configured on the phone (§10.3). |
-| `eth_sendTransaction` | `send` with `to`, `value`, `data` (or `input`) and the chain (`chainId` if given, else the current chain). `from` must be the account (else 4100). `nonce`, `gas`, `gasPrice`, `maxFeePerGas`, `maxPriorityFeePerGas`, `type` and `accessList` are dropped. `authorizationList` and blob fields → 4200. Returns the hash. |
+| `eth_sendTransaction` | `send` with `to`, `value`, `data` (or `input`) and the chain (`chainId` if given, else the current chain). `from` must be the account (else 4100). `nonce`, `gas`, `gasPrice`, `maxFeePerGas`, `maxPriorityFeePerGas`, `type` and `accessList` are dropped. `authorizationList`, blob fields and any other field → 4200. Returns the hash. |
 | `eth_signTransaction` | `signTransaction`, with the same mapping; returns `raw` |
 | `personal_sign` | `personalSign`; the address parameter must be the account |
 | `eth_signTypedData_v4` | `signTypedData`; the address parameter must be the account |
@@ -903,10 +907,11 @@ second connection) is handled by cancellation (§6.5) and on the phone (§10.6).
 **No fallback:** if the browser lacks WebCrypto Ed25519 or X25519, the SDK fails with
 `unsupported_browser`. It never falls back to raw key bytes.
 
-**Node and Rust:** keys are generated extractable and kept in a file (Node: PKCS #8 via
-`exportKey`; Rust: raw bytes) with owner-only permissions, or in a store the caller provides.
-A backend's connection is as safe as the backend. Node has no Web Locks; one process serializes
-its requests in memory, and two processes sharing one connection file are not supported.
+**Outside browsers (Node, Deno, servers) and Rust:** keys are raw bytes (`@noble/curves` in
+TypeScript), kept in a store the caller provides (`ConnectionStore`; a `MemoryStore` is built
+in) or, in Rust, in a file with owner-only permissions (`FileStore`). A backend's connection is
+as safe as the backend. Without Web Locks, one process serializes its requests in memory; two
+processes sharing one stored connection are not supported.
 
 ### 9.7 Transport
 - Reading uses `fetch` with a streaming response body and parses SSE frames itself.
@@ -1112,7 +1117,7 @@ requester can look it up. For `evm.sign_tx` it answers `signed_tx` without conta
 Message signatures are returned as `signed`. The result is recorded in the audit log.
 
 ### 10.9 Audit log
-Kept locally (Room/SQLite): time, the connection's label (as claimed) and relay host, the
+Kept locally *(hint: Room/SQLite; the app currently writes JSON lines)*: time, the connection's label (as claimed) and relay host, the
 request's claimed origin, signer, kind, chain, a decoded summary, the endpoint host, the outcome
 and the tx hash. Connects and disconnects are logged too. It can be exported as JSON through
 the share sheet. It is never uploaded. Removing a signer keeps its audit entries.
@@ -1194,54 +1199,57 @@ the share sheet. It is never uploaded. Removing a signer keeps its audit entries
 
 ## 13. Quality Gates (MVP)
 
+Ticked gates are verified by tests (PLAN.md says how); a note marks
+gates that are only partly covered. The unticked ones are mostly device and browser checks.
+
 ### 13.1 Correctness
-- [ ] `blox-proto` passes `test-vectors/` (token encoding, `token_id` and signatures, relay URL normalization, request signatures, padding, envelope seal/open for `bind` and `message` with fixed ephemeral keys, QR payload encoding, the connection statement text) natively and through the UniFFI bindings in an Android instrumented test. The TypeScript SDK passes the same vectors, plus EIP-191 and EIP-712 hashes and transaction decoding.
-- [ ] Connect with a **mock keystore** written in Rust (test seed, auto-approve, its endpoint a local `anvil`): both sides end up with the same token signed by both, and `verifyConnection` accepts the statement. A requester restarted from its stored connection sends requests without a new QR code.
-- [ ] `send`: the mock fills from anvil, signs and broadcasts; the requester gets the hash; the receipt on anvil has the requested `to`, `value` and `data`.
-- [ ] Several `send`s get consecutive nonces and are all mined.
-- [ ] `signTransaction` returns `raw` that the SDK's checks accept; the mock broadcasts nothing; the requester broadcasts `raw` and it is mined.
-- [ ] Type 2 on a chain with a base fee, legacy on a chain without one (`anvil --hardfork berlin`).
-- [ ] A call that reverts is answered `would_fail`, and nothing is signed or sent.
-- [ ] A chain without an endpoint is answered `no_endpoint`. A payload with a `nonce` or `gas` field is answered `decode_failed`.
-- [ ] With two signers, a connection to the second one gets its requests signed by the second one.
-- [ ] `personal_sign` and `typed_data` return signatures that the SDK verifies.
-- [ ] A request sent while the keystore is offline is answered when it comes online within 5 minutes. After 5 minutes it is gone, and the call has failed with `timeout`.
-- [ ] Two requesters on one connection's storage (two tabs): calls are serialized, and each gets only its own responses. A "reload" with a request in flight cancels it, and the mock keystore drops it unanswered. Two connections to one signer: each gets only its own responses.
-- [ ] The wagmi connector, in a Node test with `@wagmi/core` against the Rust relay, the mock keystore and anvil: `connect`, `sendTransaction` (also with `nonce` and `gas` set by the caller, which the keystore's own values replace), `signMessage`, `signTypedData`, `switchChain`, and reconnecting from storage. Reads go to the configured transport, never to the keystore.
+- [ ] `blox-proto` passes `test-vectors/` (token encoding, `token_id` and signatures, relay URL normalization, request signatures, padding, envelope seal/open for `bind` and `message` with fixed ephemeral keys, QR payload encoding, the connection statement text) natively and through the UniFFI bindings in an Android instrumented test. The TypeScript SDK passes the same vectors, plus EIP-191 and EIP-712 hashes and transaction decoding. *(native and TypeScript: done; Android instrumented test: pending)*
+- [x] Connect with a **mock keystore** written in Rust (test seed, auto-approve, its endpoint a local `anvil`): both sides end up with the same token signed by both, and `verifyConnection` accepts the statement. A requester restarted from its stored connection sends requests without a new QR code.
+- [x] `send`: the mock fills from anvil, signs and broadcasts; the requester gets the hash; the receipt on anvil has the requested `to`, `value` and `data`.
+- [x] Several `send`s get consecutive nonces and are all mined.
+- [x] `signTransaction` returns `raw` that the SDK's checks accept; the mock broadcasts nothing; the requester broadcasts `raw` and it is mined.
+- [x] Type 2 on a chain with a base fee, legacy on a chain without one (`anvil --hardfork berlin`).
+- [x] A call that reverts is answered `would_fail`, and nothing is signed or sent.
+- [x] A chain without an endpoint is answered `no_endpoint`. A payload with a `nonce` or `gas` field is answered `decode_failed`.
+- [x] With two signers, a connection to the second one gets its requests signed by the second one.
+- [x] `personal_sign` and `typed_data` return signatures that the SDK verifies.
+- [x] A request sent while the keystore is offline is answered when it comes online within 5 minutes. After 5 minutes it is gone, and the call has failed with `timeout`.
+- [ ] Two requesters on one connection's storage (two tabs): calls are serialized, and each gets only its own responses. A "reload" with a request in flight cancels it, and the mock keystore drops it unanswered. Two connections to one signer: each gets only its own responses. *(Rust: two requesters in flight on one connection, and a dropped call cancelled — done; serialization across tabs and the `sessionStorage` reload path need a browser)*
+- [x] The wagmi connector, in a Node test with `@wagmi/core` against the Rust relay, the mock keystore and anvil: `connect`, `sendTransaction` (also with `nonce` and `gas` set by the caller, which the keystore's own values replace), `signMessage`, `signTypedData`, `switchChain`, and reconnecting from storage. Reads go to the configured transport, never to the keystore. *(done in a Deno test with `@wagmi/core` 3.6.9)*
 - [ ] A wagmi demo page connects to the Android app on a real device and completes `sendTransaction`, over the public relay.
 
 ### 13.2 Security
-- [ ] A tampered envelope (any flipped byte) is rejected. A `bind` sealed with the wrong PSK is rejected. A message from an `spk` that isn't a live connection is dropped.
-- [ ] The relay answers 401 to: a write with no token or ticket; a token without the inbox owner's signature; a request signed by anyone but the token's other party; an expired token or one with too long a lifetime; a stale request `ts`; a read or acknowledgement not signed by the inbox key.
-- [ ] A used ticket is answered 409, and an expired one 401.
-- [ ] Disconnecting from either side: the other side's next write gets 403, and the side that disconnected drops messages from that connection even through a relay that ignores revocations.
-- [ ] A second valid `bind` fails the connect with `contested` and revokes both tokens.
-- [ ] A `bind` whose `spk` isn't the token's `k`, or whose statement differs from the token by one character, is rejected.
-- [ ] When `bound` never arrives, the keystore revokes the half-signed token, and the requester's writes with it get 403.
-- [ ] A request redelivered after the keystore "crashed" mid-request (killed between answering and acknowledging, and between signing and broadcasting) is not shown again and gets the stored answer; nothing is signed twice.
-- [ ] A requester whose clock is 10 minutes off connects and sends requests (relay time, §4.8).
-- [ ] Replaying the same message is rejected (by `id`), and stale `ts` is rejected.
-- [ ] Log capture during connect and requests contains no inbox keys, tokens, tickets, envelope bytes or IPs (automated grep test).
-- [ ] `evm.eip7702_auth` and `evm.eth_sign` requests are refused end to end.
+- [x] A tampered envelope (any flipped byte) is rejected. A `bind` sealed with the wrong PSK is rejected. A message from an `spk` that isn't a live connection is dropped.
+- [x] The relay answers 401 to: a write with no token or ticket; a token without the inbox owner's signature; a request signed by anyone but the token's other party; an expired token or one with too long a lifetime; a stale request `ts`; a read or acknowledgement not signed by the inbox key.
+- [x] A used ticket is answered 409, and an expired one 401.
+- [x] Disconnecting from either side: the other side's next write gets 403, and the side that disconnected drops messages from that connection even through a relay that ignores revocations.
+- [ ] A second valid `bind` fails the connect with `contested` and revokes both tokens. *(implemented, not tested: needs a misbehaving relay)*
+- [x] A `bind` whose `spk` isn't the token's `k`, or whose statement differs from the token by one character, is rejected.
+- [x] When `bound` never arrives, the keystore revokes the half-signed token, and the requester's writes with it get 403.
+- [x] A request redelivered after the keystore "crashed" mid-request (killed between answering and acknowledging, and between signing and broadcasting) is not shown again and gets the stored answer; nothing is signed twice.
+- [x] A requester whose clock is 10 minutes off connects and sends requests (relay time, §4.8).
+- [x] Replaying the same message is rejected (by `id`), and stale `ts` is rejected.
+- [x] Log capture during connect and requests contains no inbox keys, tokens, tickets, envelope bytes or IPs (automated grep test).
+- [ ] `evm.eip7702_auth` and `evm.eth_sign` requests are refused end to end. *(unit tests in `blox-evm`; the mock keystore and the app use the same code)*
 - [ ] The keystore contacts no host except its configured endpoints and allowed relays. A QR code naming an unknown relay prompts before any connection.
 - [ ] Removing a signer ends its connections, deletes its Android Keystore wrapping key and its transport keys; its old connections' writes are then refused.
-- [ ] The SDK never logs the QR string or its secret keys. In browsers, `crypto.subtle.exportKey` on the stored connection keys fails.
+- [ ] The SDK never logs the QR string or its secret keys. In browsers, `crypto.subtle.exportKey` on the stored connection keys fails. *(nothing is logged; the `exportKey` check needs a browser)*
 
 ### 13.3 Relay robustness
-- [ ] A reader that disconnects and reconnects gets unacknowledged messages again, and messages that were acknowledged do not come back.
-- [ ] Two readers on one inbox both get every message; a message one of them acknowledges is not delivered to readers that connect later; a 9th reader gets 429.
-- [ ] A writer with 4 messages queued in an inbox gets 429, while another connection's writes to the same inbox still succeed.
-- [ ] Queue, size, rate, ticket and revocation limits are enforced with the documented status codes.
-- [ ] CORS preflights are answered, and a browser page can register a ticket, write, read and acknowledge.
-- [ ] Memory returns to baseline after 10k inboxes are drained or expire, and expired tickets and revocations are dropped.
-- [ ] 1,000 concurrent SSE readers; enqueue-to-delivery p99 < 50 ms on localhost, including token checks.
+- [x] A reader that disconnects and reconnects gets unacknowledged messages again, and messages that were acknowledged do not come back.
+- [x] Two readers on one inbox both get every message; a message one of them acknowledges is not delivered to readers that connect later; a 9th reader gets 429.
+- [x] A writer with 4 messages queued in an inbox gets 429, while another connection's writes to the same inbox still succeed.
+- [x] Queue, size, rate, ticket and revocation limits are enforced with the documented status codes.
+- [ ] CORS preflights are answered, and a browser page can register a ticket, write, read and acknowledge. *(preflight: done; from a browser page: pending)*
+- [ ] Memory returns to baseline after 10k inboxes are drained or expire, and expired tickets and revocations are dropped. *(tested with 200 inboxes)*
+- [x] 1,000 concurrent SSE readers; enqueue-to-delivery p99 < 50 ms on localhost, including token checks.
 
 ### 13.4 Compatibility
 - [ ] Runs on Android 9 (`minSdk` 28) through the current release, on at least one StrongBox device and one TEE-only device.
 - [ ] BiometricPrompt approval works with fingerprint, with face (class 3), and with the device-PIN fallback.
 - [ ] Removing the screen lock invalidates the seed wrapping keys, and the restore flow recovers the same addresses for every signer. Connections keep working (transport keys don't need user authentication).
 - [ ] The SDK's QR code scans reliably from laptop screens, in light and dark page themes.
-- [ ] The SDK works in current Chrome, Firefox and Safari, including IndexedDB storage, and in Node 22+. The connector works with wagmi's current major version.
+- [ ] The SDK works in current Chrome, Firefox and Safari, including IndexedDB storage, and in Node 22+. The connector works with wagmi's current major version. *(Deno and wagmi 3: done; browsers and Node: pending)*
 - [ ] Integration needs one dependency and one import: a fresh Vite and a fresh Next.js app with wagmi build with the connector added and no other change (no bundler plugin, no CSS import). `@blox/sdk` stays within its size target (§9.1).
 - [ ] A reproducible build produces the same APK bytes as the published release (apart from the signature).
 
@@ -1259,8 +1267,8 @@ blox/
 │   ├── blox-relay/            axum relay (§8)          → binary `blox-relay`
 │   ├── blox-client/           Rust requester (§9)
 │   └── blox-mock-keystore/    Rust keystore for tests (§13.1)
-├── sdk/js/                    @blox/sdk: TypeScript requester on WebCrypto, the modal, the EIP-1193
-│                              provider, and the wagmi connector (`@blox/sdk/wagmi`)
+├── sdk/js/                    @blox/sdk: TypeScript requester, the modal, the EIP-1193 provider, the
+│                              wagmi connector (`@blox/sdk/wagmi`), and `demo/` (Vite + wagmi)
 ├── android/                   Kotlin/Compose keystore app (§10), Gradle build that runs cargo-ndk
 ├── test-vectors/              JSON vectors pinning the wire format
 ├── deploy/

@@ -345,6 +345,21 @@ listed below while they exist.
   (pulling and running base images wasn't attempted). Deploying `relay.example.com`, the release
   key and signed reproducible APKs remain the user's.
 
+## Picking this up on another machine
+
+1. **Rust:** `cargo test --workspace` (the anvil tests need Foundry; `foundryup -i v1.8.3` was
+   used here). `cargo clippy --workspace --all-targets` is clean.
+2. **Android:** see `android/README.md` (setup) and RUN.md ("With the Android app"). Build with
+   `./gradlew :app:assembleDebug`; the Gradle build runs cargo-ndk and generates the Kotlin
+   bindings. Expect compiler fixes in `android/app/src/main/java/...`: the Kotlin was written
+   against the generated signatures but never compiled.
+3. **iOS (v2 in the spec):** the same Rust core works; Swift bindings come from
+   `cargo run -p blox-ffi --bin uniffi-bindgen -- generate --library <libblox_ffi.dylib/.a>
+   --language swift --out-dir <dir>`. `blox-ffi`'s API is platform-neutral (`EndpointRpc` is the
+   only foreign trait); the vault and storage are per-platform (BLOX.md §12.4).
+4. **Web SDK:** `cd sdk/js && deno task test` (after `cargo build -p blox-relay -p
+   blox-mock-keystore`); `demo/` with Node for the browser checks below.
+
 ## Left for the user `[!]`
 
 1. **Android (5.2):** build in Android Studio, fix what the compiler reports, run the §13.4

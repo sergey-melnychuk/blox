@@ -21,7 +21,7 @@ not yet compiled. Step-by-step status, notes and what's left: PLAN.md.
 ## M4: requests (Rust)
 
 - [x] Messages (§6): `evm.send`, `evm.sign_tx`, `cancel`, `sent` / `signed_tx` / `signed` / `failed` / `rejected`, reasons `no_endpoint` and `would_fail`
-- [x] `blox-evm`: build the transaction from intent plus endpoint data (reuse `TxRequest` / `Fill` from `rpc.rs`), the estimate-gas check, display updates
+- [x] `blox-evm`: build the transaction from intent plus endpoint data (`intent`, `fill`, `keystore`, `check`; the adapter-era `TxRequest` is gone), the estimate-gas check, display updates
 - [x] `blox-client`: `send`, `sign_transaction`, `personal_sign`, `sign_typed_data` with the §9.5 checks
 - [x] Mock keystore with an anvil endpoint and two signers; acknowledge requests only once answered, store answers for redelivery (§10.6, §10.8); port the anvil tests to the §13.1 gates
 - [x] Rewrite `RUN.md`
@@ -37,11 +37,13 @@ not yet compiled. Step-by-step status, notes and what's left: PLAN.md.
 - [~] Settings: chain endpoints (checked with `eth_chainId`), relay list with the consent prompt
 - [~] `ChainRpc` foreign trait (`EndpointRpc`; Rust side done and tested; OkHttp implementation written); filling and sending in Rust
 - [~] Review screen: filled fields, endpoint host, would-fail and no-endpoint states, "Sent · hash" / "Returned to the site"
-- [ ] Carried over: on-device checks (§13.4), audit log, the recovery phrase held as a `String` in Compose state
+- [~] Audit log (JSON lines, exported as text; Room and a viewer later)
+- [ ] Build the app, on-device checks (§13.4), an instrumented test of the bindings against `test-vectors/`
+- [ ] Carried over: the recovery phrase held as a `String` in Compose state
 
 ## M6: Web SDK
 
-- [x] `@blox/sdk` on WebCrypto (no wasm): non-extractable keys in IndexedDB, Web Locks for connecting and one request in flight, `sessionStorage` cancel after reload (§9.2, §9.6)
+- [x] `@blox/sdk` (no wasm): WebCrypto non-extractable keys in IndexedDB in browsers, `@noble` raw keys elsewhere, Web Locks for connecting and one request in flight, `sessionStorage` cancel after reload (§9.2, §9.6)
 - [x] The modal (shadow root, request toast), `verifyConnection`
 - [x] EIP-1193 provider (§9.3 method and error tables) and the wagmi connector `@blox/sdk/wagmi`
 - [x] Deno test with `@wagmi/core` against the Rust relay, mock keystore and anvil; a wagmi demo page
