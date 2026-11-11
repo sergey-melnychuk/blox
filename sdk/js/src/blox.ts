@@ -11,6 +11,7 @@ import { type Backend, chooseBackend, type KemKey, kemKeyFrom, type SigKey, sigK
 import { type Delivery, RelayClient, RelayError } from "./relay.ts";
 import { DEFAULT_RELAY, normalizeRelay } from "./relayUrl.ts";
 import { type ConnectionStore, defaultStore, type StoredConnection } from "./store.ts";
+import { createUi } from "./ui.ts";
 import {
   decodeMessage,
   encodeMessage,
@@ -75,6 +76,8 @@ export interface BloxOptions {
   connectTimeoutMs?: number;
   /** Key backend; chosen automatically (WebCrypto in browsers). */
   backend?: Backend;
+  /** `"toast"` (default in browsers) shows request progress; `"none"` leaves it to you (§9.4). */
+  requestUi?: "toast" | "none";
   /** Test hook: pretend the local clock is off by this many seconds (§4.8). */
   localClockSkew?: number;
 }
@@ -113,13 +116,30 @@ export class Blox {
   private queue: Promise<unknown> = Promise.resolve();
   private connecting: Promise<Live> | null = null;
   private inflight = new Map<string, { cancel: Uint8Array; auth: string; inbox: string; token: string }>();
+  private abort: AbortController | null = null;
+  private onQr: (uri: string | null) => void;
+  private onStatus: (s: Status) => void;
 
   constructor(private readonly opts: BloxOptions) {
     this.relayUrl = normalizeRelay(opts.relay ?? DEFAULT_RELAY);
     this.relay = new RelayClient(this.relayUrl, opts.localClockSkew ?? 0);
     this.store = opts.storage ?? defaultStore();
+    const browser = typeof (globalThis as { document?: unknown }).document !== "undefined";
+    const ui = browser && (!opts.onQr || (!opts.onStatus && opts.requestUi !== "none"))
+      ? createUi(opts.name, () => this.cancel(), { toast: opts.requestUi !== "none" })
+      : null;
+    this.onQr = opts.onQr ?? ui?.onQr ?? (() => {});
+    this.onStatus = (s) => {
+      opts.onStatus?.(s);
+      if (!opts.onStatus) ui?.onStatus(s);
+    };
     const g = globalThis as { addEventListener?: (t: string, f: () => void) => void };
     g.addEventListener?.("pagehide", () => this.cancelOnPageHide());
+  }
+
+  /** Cancels the connect or request in progress (the modal's Cancel). */
+  cancel(): void {
+    this.abort?.abort();
   }
 
   /** The connected account (checksummed), once known. */
@@ -136,7 +156,7 @@ export class Blox {
   }
 
   private status(s: Status) {
-    this.opts.onStatus?.(s);
+    this.onStatus(s);
   }
 
   // ---- connecting ---------------------------------------------------------------------
@@ -181,11 +201,12 @@ export class Blox {
     const label = truncateLabel(this.opts.name);
     await this.relay.registerTicket(sig.key, sha256(ticket), this.relay.now() + TICKET_SECS);
 
-    const inbox = new Inbox(this.relay, sig.key);
+    const abort = (this.abort = new AbortController());
+    const inbox = new Inbox(this.relay, sig.key, abort.signal);
     try {
       const uri = offerUri(this.relayUrl, requester, ticket, psk, label);
       const deadline = Date.now() + (this.opts.connectTimeoutMs ?? TICKET_SECS * 1000);
-      this.opts.onQr?.(uri);
+      this.onQr(uri);
       this.status({ type: "connecting", uri, until: deadline });
       while (true) {
         const d = await inbox.next(deadline - Date.now());
@@ -230,7 +251,8 @@ export class Blox {
       }
     } finally {
       inbox.close();
-      this.opts.onQr?.(null);
+      this.onQr(null);
+      this.abort = null;
     }
   }
 
@@ -300,7 +322,8 @@ export class Blox {
       token: live.token.toHeader(),
     });
 
-    const inbox = new Inbox(this.relay, live.sig);
+    const abort = (this.abort = new AbortController());
+    const inbox = new Inbox(this.relay, live.sig, abort.signal);
     try {
       try {
         await this.relay.post(ks.sig, { token: live.token, key: live.sig }, sealed);
@@ -310,9 +333,18 @@ export class Blox {
       const deadline = Date.now() + (expiresAt - this.relay.now()) * 1000;
       this.status({ type: "waiting", until: deadline });
       while (true) {
-        const d = await inbox.next(deadline - Date.now());
+        let d;
+        try {
+          d = await inbox.next(deadline - Date.now());
+        } catch (e) {
+          if (e instanceof BloxError && e.code === "cancelled") {
+            await this.relay.post(ks.sig, { token: live.token, key: live.sig }, cancel).catch(() => {});
+          }
+          throw e;
+        }
         if (!d) {
           await this.relay.post(ks.sig, { token: live.token, key: live.sig }, cancel).catch(() => {});
+          this.status({ type: "done", text: "Expired" });
           throw new BloxError("timeout", "the request expired before the phone answered");
         }
         let m;
@@ -338,6 +370,7 @@ export class Blox {
     } finally {
       inbox.close();
       this.untrack(msg.id);
+      this.abort = null;
     }
   }
 
@@ -432,6 +465,17 @@ export class Blox {
       await this.relay.revoke(live.token, live.sig).catch(() => {});
     }
     await this.forget();
+  }
+
+  /** Loads a stored, unexpired connection without showing a QR code; its account or null. */
+  async restore(): Promise<string | null> {
+    if (this.live && this.live.token.body.expiresAt > this.relay.now()) return this.live.account;
+    const s = await this.store.load(this.relayUrl);
+    if (!s) return null;
+    const token = Token.fromHeader(s.token);
+    if (token.body.expiresAt <= Math.floor(Date.now() / 1000)) return null;
+    this.live = { token, sig: sigKeyFrom(s.sig), kem: kemKeyFrom(s.kem), account: s.account, stored: s };
+    return s.account;
   }
 
   private async loadQuietly(): Promise<Live | null> {
@@ -529,7 +573,8 @@ class Inbox {
   private wake: (() => void) | null = null;
   private failed: unknown = null;
 
-  constructor(relay: RelayClient, key: SigKey) {
+  constructor(relay: RelayClient, key: SigKey, private readonly cancel?: AbortSignal) {
+    cancel?.addEventListener("abort", () => this.wake?.());
     relay.subscribe(key, (d) => {
       this.items.push(d);
       this.wake?.();
@@ -543,6 +588,7 @@ class Inbox {
   async next(ms: number): Promise<Delivery | null> {
     const deadline = Date.now() + ms;
     while (!this.items.length) {
+      if (this.cancel?.aborted) throw new BloxError("cancelled", "cancelled");
       if (this.failed) throw new BloxError("relay_error", String(this.failed));
       const left = deadline - Date.now();
       if (left <= 0) return null;

@@ -142,7 +142,7 @@ listed below while they exist.
   keys; memory for tests), Web Locks where available, EVM checks (`@noble`), `verifyConnection`.
 - Deno integration test against the Rust relay and mock keystore (with anvil).
 
-### 6.3 Provider, wagmi connector, modal  `[ ]`
+### 6.3 Provider, wagmi connector, modal  `[x]`
 - EIP-1193 provider (§9.3 tables), `@blox/sdk/wagmi`, the modal and toast in a closed shadow
   root with an embedded QR encoder.
 - Deno test with `@wagmi/core` against relay + mock keystore + anvil.
@@ -318,3 +318,19 @@ listed below while they exist.
   restart from storage, disconnect and a stale copy, ±600 s clock skew, an expired request,
   and server login with a nonce. **Not exercised here:** IndexedDB, Web Locks,
   `sessionStorage`, `pagehide` (no browser).
+- **6.3:** `src/qr.ts`: a QR encoder (level M, versions 1–10, one alphanumeric or byte
+  segment). Pinned against the Rust `qrcode` crate in `test-vectors/qr-v1.json`: identical
+  under the mask the Rust encoder chose; the two penalty implementations can prefer
+  different masks (both valid), so the TS encoder may pick another mask than Rust.
+  `src/ui.ts`: modal and toast in a closed shadow root, used when no `onQr`/`onStatus` is
+  given in a browser (`requestUi: "none"` turns the toast off); Cancel calls
+  `Blox.cancel()`, which aborts a connect or withdraws a request (`cancelled`).
+  `src/provider.ts`: the §9.3 method and error tables; `eth_sendTransaction` drops nonce,
+  gas, fees, type and access list, refuses 7702/blob fields and anything unknown; reads go to
+  the site's transports. `src/wagmi.ts`: `blox()` returns the connector function directly
+  (`@wagmi/core` is a type-only dependency), reads go through the wagmi config's transports.
+  `Blox.restore()` loads a stored connection without a QR (for `eth_accounts` and
+  `isAuthorized`). The wagmi test (`@wagmi/core` 3.6.9, viem 2.57.17) connects, sends with
+  the caller's nonce/gas replaced by the phone's, signs a message and typed data, switches
+  chain (4901 without an endpoint), reconnects a new config from storage without a QR, and
+  disconnects. **Not exercised here:** the modal and toast DOM (no browser).

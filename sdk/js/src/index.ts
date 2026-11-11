@@ -16,4 +16,7 @@ export type { ConnectionStore, StoredConnection } from "./store.ts";
 export { rawBackend, webcryptoBackend } from "./keys.ts";
 export type { Backend } from "./keys.ts";
 export { DEFAULT_RELAY } from "./relayUrl.ts";
+export { BloxProvider, createProvider, ProviderRpcError } from "./provider.ts";
+export type { ProviderOptions } from "./provider.ts";
+export { qrSvg } from "./qr.ts";
 export type { RejectReason, SignRequest, SignResponse } from "./wire.ts";
