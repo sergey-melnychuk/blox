@@ -1,7 +1,6 @@
 // Shared by the integration tests: the Rust relay, anvil and the mock keystore binary.
 const TARGET = new URL("../../../target/debug/", import.meta.url).pathname;
 const HOME = Deno.env.get("HOME") ?? "";
-const ANVIL = Deno.env.get("ANVIL") ?? `${HOME}/.foundry/bin/anvil`;
 export const BOB = "0x4242424242424242424242424242424242424242";
 
 export function exists(p: string) {
@@ -12,6 +11,11 @@ export function exists(p: string) {
     return false;
   }
 }
+
+/** `$ANVIL`, then foundryup's location, then `anvil` on the PATH (e.g. Homebrew). */
+const ANVIL = Deno.env.get("ANVIL") ??
+  [`${HOME}/.foundry/bin`, ...(Deno.env.get("PATH") ?? "").split(":")].map((d) => `${d}/anvil`).find(exists) ??
+  `${HOME}/.foundry/bin/anvil`;
 
 export function freePort(): number {
   const l = Deno.listen({ hostname: "localhost", port: 0 });

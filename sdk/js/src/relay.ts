@@ -1,6 +1,7 @@
 /** The relay's HTTP API (BLOX.md §8.2) with signed requests (§4.4) and relay time (§4.8). */
 
 import { b64, unb64 } from "./b64.ts";
+import { own } from "./bytes.ts";
 import type { SigKey } from "./keys.ts";
 import { signRequest, type Token } from "./wire.ts";
 
@@ -56,7 +57,7 @@ export class RelayClient {
       const res = await fetch(`${this.base}${path}`, {
         method,
         headers,
-        body: method === "GET" || method === "DELETE" ? undefined : body,
+        body: method === "GET" || method === "DELETE" ? undefined : own(body),
         keepalive: opts.keepalive,
         signal: opts.signal,
       });

@@ -24,7 +24,7 @@ const { txHash } = await b.send({ chain: 8453, to: "0x…", value: 10n ** 16n })
 ```sh
 cargo build -p blox-relay -p blox-mock-keystore   # from the repository root
 deno task test                                    # needs anvil for the integration tests
-npm run build                                     # tsc → dist/ (not yet tried)
+npm run build                                     # tsc → dist/
 ```
 
 `demo/` is a Vite + wagmi page using the source directly (`npm install && npm run dev`).

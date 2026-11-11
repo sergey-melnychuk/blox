@@ -372,6 +372,15 @@ listed below while they exist.
      fresh relay connection per call, the port can be taken in between and anvil exits.
      The harness now starts anvil again on a new port.
   Afterwards: 25/25 clean runs of `blox-mock-keystore`.
+- **SDK, run locally (Deno 2.9.8, TypeScript 6, Node 26):** all 18 tests pass, now including
+  the integration and wagmi tests against the Rust binaries and anvil, and the **WebCrypto
+  backend round-trip** (Deno 2's X25519 works, so the browser key path is exercised outside a
+  browser too). Changes: newer `lib.dom` types want `Uint8Array<ArrayBuffer>` for WebCrypto
+  and `fetch` bodies, so `own()` says so and the two `fetch` bodies go through it; the test
+  harness finds anvil on the `PATH` (Homebrew) instead of silently skipping;
+  `"nodeModulesDir": "auto"` so `deno task test` works on a fresh checkout under Deno 2;
+  `deno.lock` is now format v5 (same versions). `npm run build` (tsc 5.9) builds `dist/`
+  with `.js` imports.
 
 ## Picking this up on another machine
 
@@ -395,7 +404,7 @@ listed below while they exist.
 2. **Browser (6.x):** run `sdk/js/demo` (`npm install && npm run dev`) in Chrome, Firefox and
    Safari; check IndexedDB keys are non-extractable (`crypto.subtle.exportKey` fails), Web
    Locks across tabs, cancel on reload/`pagehide`; the one-dependency check in fresh Vite and
-   Next.js apps; `npm run build` of `@blox/sdk`.
+   Next.js apps.
 3. **Release (7):** build and run the relay image, deploy behind Caddy at `relay.example.com`,
    create the offline release key, reproducible signed APKs with published checksums.
 4. **Open product question:** the Permit2 danger flag makes every Uniswap swap need a typed

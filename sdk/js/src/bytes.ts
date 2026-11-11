@@ -51,6 +51,6 @@ export function fromHex(s: string): Uint8Array {
 }
 
 /** Copies into a fresh ArrayBuffer-backed array (WebCrypto wants exact buffers). */
-export function own(b: Uint8Array): Uint8Array {
+export function own(b: Uint8Array): Uint8Array<ArrayBuffer> {
   return new Uint8Array(b);
 }

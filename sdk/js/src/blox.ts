@@ -5,7 +5,7 @@
 
 import { sha256 } from "@noble/hashes/sha2";
 import { b64, unb64 } from "./b64.ts";
-import { equal, randomBytes, toHex } from "./bytes.ts";
+import { equal, own, randomBytes, toHex } from "./bytes.ts";
 import { checkResponse, checksum, type TypedData, verifyStatement } from "./evm.ts";
 import { type Backend, chooseBackend, type KemKey, kemKeyFrom, type SigKey, sigKeyFrom, UnsupportedBrowser } from "./keys.ts";
 import { type Delivery, RelayClient, RelayError } from "./relay.ts";
@@ -560,7 +560,7 @@ export class Blox {
         method: "POST",
         keepalive: true,
         headers: { authorization: c.auth, "blox-token": c.token, "content-type": "application/octet-stream" },
-        body: c.cancel,
+        body: own(c.cancel),
       }).catch(() => {});
     }
   }

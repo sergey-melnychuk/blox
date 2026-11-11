@@ -1,4 +1,5 @@
 {
+  "nodeModulesDir": "auto",
   "imports": {
     "@noble/curves/": "npm:/@noble/curves@1.9.1/",
     "@noble/hashes/": "npm:/@noble/hashes@1.8.0/",

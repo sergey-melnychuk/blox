@@ -25,7 +25,7 @@ function extract(salt: Uint8Array, ikm: Uint8Array): Uint8Array {
 
 function expand(prk: Uint8Array, info: Uint8Array, len: number): Uint8Array {
   const out = new Uint8Array(len);
-  let t = new Uint8Array(0);
+  let t: Uint8Array = new Uint8Array(0);
   for (let i = 1, at = 0; at < len; i++) {
     t = hmac(sha256, prk, concat(t, info, new Uint8Array([i])));
     out.set(t.slice(0, Math.min(t.length, len - at)), at);
