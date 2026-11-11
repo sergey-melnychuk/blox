@@ -5,8 +5,9 @@ transaction); sites and apps connect to one signer once with a QR code and then 
 through the relay, which authorizes writes with connection tokens and keeps messages 5 minutes.
 The JSON-RPC adapter (`blox rpc`) is retired. See BLOX.md §16.
 
-**Done so far:** M1, M2 (retired), M3 and M4, and the Rust side of
-M5 (`blox-ffi`). Step-by-step status and implementation notes: PLAN.md.
+**Done so far:** M1, M2 (retired), M3, M4, the Rust side of M5
+(`blox-ffi`), M6 except browser checks, and M7's files. The Android app (M5) is written but
+not yet compiled. Step-by-step status, notes and what's left: PLAN.md.
 
 ## M3: connections (Rust)
 
@@ -27,25 +28,29 @@ M5 (`blox-ffi`). Step-by-step status and implementation notes: PLAN.md.
 
 ## M5: Android
 
-- [ ] Signers: add (generate + backup check), remove (ends connections, auth + typed confirmation, deletes the wrapping key and transport keys), view phrase; one wrapping key per signer; transport keys under `blox.transport.wrap.v1`
-- [ ] Import only in debug builds (anvil test phrase); restore of existing signers in all builds
-- [ ] Connect screen (signer picker, remember-for, biometric, statement signature); connection list per signer with disconnect
-- [ ] Reading inboxes in the foreground; requests grouped by connection, cancelled and duplicate-looking requests; stored answers for redelivered requests (§10.6)
-- [ ] Settings: chain endpoints (checked with `eth_chainId`), relay list with the consent prompt
-- [~] `ChainRpc` foreign trait (Rust side done in `blox-ffi`; OkHttp implementation in the app); filling and sending in Rust
-- [ ] Review screen: filled fields, endpoint host, would-fail and no-endpoint states, "Sent · hash" / "Returned to the site"
+`[~]` = written, not compiled yet.
+
+- [~] Signers: add (generate + backup check), remove (ends connections, auth + typed confirmation, deletes the wrapping key and transport keys), view phrase; one wrapping key per signer; transport keys under `blox.transport.wrap.v1`
+- [~] Import only in debug builds (anvil test phrase); restore of existing signers in all builds
+- [~] Connect screen (signer picker, remember-for, biometric, statement signature); connection list per signer with disconnect
+- [~] Reading inboxes in the foreground; requests grouped by connection, cancelled and duplicate-looking requests; stored answers for redelivered requests (§10.6)
+- [~] Settings: chain endpoints (checked with `eth_chainId`), relay list with the consent prompt
+- [~] `ChainRpc` foreign trait (`EndpointRpc`; Rust side done and tested; OkHttp implementation written); filling and sending in Rust
+- [~] Review screen: filled fields, endpoint host, would-fail and no-endpoint states, "Sent · hash" / "Returned to the site"
 - [ ] Carried over: on-device checks (§13.4), audit log, the recovery phrase held as a `String` in Compose state
 
 ## M6: Web SDK
 
-- [ ] `@blox/sdk` on WebCrypto (no wasm): non-extractable keys in IndexedDB, Web Locks for connecting and one request in flight, `sessionStorage` cancel after reload (§9.2, §9.6)
-- [ ] The modal (shadow root, request toast), `verifyConnection`
-- [ ] EIP-1193 provider (§9.3 method and error tables) and the wagmi connector `@blox/sdk/wagmi`
-- [ ] Node test with `@wagmi/core` against the Rust relay, mock keystore and anvil; a wagmi demo page; the one-dependency check in fresh Vite and Next.js apps
+- [x] `@blox/sdk` on WebCrypto (no wasm): non-extractable keys in IndexedDB, Web Locks for connecting and one request in flight, `sessionStorage` cancel after reload (§9.2, §9.6)
+- [x] The modal (shadow root, request toast), `verifyConnection`
+- [x] EIP-1193 provider (§9.3 method and error tables) and the wagmi connector `@blox/sdk/wagmi`
+- [x] Deno test with `@wagmi/core` against the Rust relay, mock keystore and anvil; a wagmi demo page
+- [ ] Browser checks (IndexedDB, Web Locks, Safari) and the one-dependency check in fresh Vite and Next.js apps
 
 ## M7: Deploy and release
 
-- [ ] Dockerfile and Caddyfile, deploy `relay.example.com`, README (§14.2), reproducible signed APK
+- [x] Dockerfile and Caddyfile, README (§14.2)
+- [ ] Deploy `relay.example.com`, reproducible signed APK
 
 ## Later
 

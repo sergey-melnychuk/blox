@@ -1,0 +1,5 @@
+target
+android
+sdk/js/node_modules
+sdk/js/demo/node_modules
+.git

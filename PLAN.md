@@ -154,7 +154,7 @@ listed below while they exist.
 
 ## M7 — release
 
-### 7.1 Deployment files and README  `[ ]`
+### 7.1 Deployment files and README  `[x]`
 - `deploy/Dockerfile`, `deploy/Caddyfile`, README per §14.2.
 - **Deploying `relay.example.com`, the release key and reproducible signed APKs** `[!]`: the user's.
 
@@ -339,3 +339,22 @@ listed below while they exist.
   `@blox/sdk` to the SDK source, so no build step is needed. `?mock` prints the QR string for
   the mock keystore. Type-checked with Deno against wagmi 3.6.9 / viem 2.57.17; not run
   (no Node or browser here). Packaging (`npm run build` with `tsc`) is also untested here.
+- **7.1:** `deploy/Dockerfile` (multi-stage, `rust:1-slim-bookworm` → distroless `cc` nonroot;
+  pin by digest for production), `deploy/Caddyfile` (`flush_interval -1`, no access log),
+  `.dockerignore`, and `README.md` per §14.2 with a status note. The image was not built here
+  (pulling and running base images wasn't attempted). Deploying `relay.example.com`, the release
+  key and signed reproducible APKs remain the user's.
+
+## Left for the user `[!]`
+
+1. **Android (5.2):** build in Android Studio, fix what the compiler reports, run the §13.4
+   device checks (StrongBox and TEE devices, fingerprint/face/PIN, screen-lock removal and
+   restore), and an instrumented test of the bindings against `test-vectors/`.
+2. **Browser (6.x):** run `sdk/js/demo` (`npm install && npm run dev`) in Chrome, Firefox and
+   Safari; check IndexedDB keys are non-extractable (`crypto.subtle.exportKey` fails), Web
+   Locks across tabs, cancel on reload/`pagehide`; the one-dependency check in fresh Vite and
+   Next.js apps; `npm run build` of `@blox/sdk`.
+3. **Release (7):** build and run the relay image, deploy behind Caddy at `relay.example.com`,
+   create the offline release key, reproducible signed APKs with published checksums.
+4. **Open product question:** the Permit2 danger flag makes every Uniswap swap need a typed
+   confirmation; v2 per-connection policies could relax it (BLOX.md §12.2).
