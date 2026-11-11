@@ -124,11 +124,11 @@ listed below while they exist.
   signing and sending, stored answers, relay request signatures, mnemonic helpers. Rust tests
   drive it like the app would.
 
-### 5.2 Android app  `[!]` written, not compiled
+### 5.2 Android app  `[~]` builds; device checks pending
 - Multiple signers (one wrapping key each), transport keys, settings (endpoints, relays), connect
   screen, connection list, inbox reading, request queue and review screen, audit log.
-- **Written here but not compiled:** no Android SDK on this machine. Building and the §13.4
-  device checks are for the user.
+- Written on Linux without the Android SDK; built locally (see the notes). The §13.4
+  device checks are pending.
 
 ## M6 — web SDK
 
@@ -289,9 +289,13 @@ listed below while they exist.
     withdrawn, would-fail, Retry), signer (connections with Disconnect, view phrase,
     restore, remove with typed confirmation), settings (endpoints checked with
     `eth_chainId`, relays, audit export).
-  - **Not done here:** compiling (no Android SDK; running a downloaded `ktlint` for a syntax
-    check was not permitted), the §13.4 device checks, an instrumented test of the
-    bindings.
+  - **Built locally** (AGP 9.4.1, Kotlin 2.2.10, NDK 30.0.16248370): the hand-written
+    Kotlin compiled without changes and without warnings. The one error was in the
+    *generated* bindings: a UniFFI error variant with a field named `message` collides with
+    `Throwable.message` in Kotlin, so `RpcFailure`'s field is now `detail` (FFI only; the
+    wire format is unchanged). `Scanner.kt` uses ZXing's `MultiFormatReader`, the only reader
+    that honours `ALSO_INVERTED` (light-on-dark codes).
+  - **Not done yet:** the §13.4 device checks.
 - **6.1:** `sdk/js/src`: `bytes`, `b64`, `base45`, `pad`, `relayUrl`, `keys` (two backends),
   `hpke` (RFC 9180 auth / auth_psk on `@noble/hashes` HMAC + WebCrypto AES-GCM), `wire`
   (tokens, request signatures, envelopes, offer, statement, messages). **Deno 1.46's WebCrypto
@@ -374,8 +378,7 @@ listed below while they exist.
 
 ## Left for the user `[!]`
 
-1. **Android (5.2):** build in Android Studio, fix what the compiler reports, run the §13.4
-   device checks (StrongBox and TEE devices, fingerprint/face/PIN, screen-lock removal and
+1. **Android (5.2):** the app builds; run the §13.4 device checks (StrongBox and TEE devices, fingerprint/face/PIN, screen-lock removal and
    restore), and an instrumented test of the bindings against `test-vectors/`.
 2. **Browser (6.x):** run `sdk/js/demo` (`npm install && npm run dev`) in Chrome, Firefox and
    Safari; check IndexedDB keys are non-extractable (`crypto.subtle.exportKey` fails), Web

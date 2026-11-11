@@ -19,11 +19,11 @@ impl EndpointRpc for FakeEndpoint {
             Some(Ok(v)) => Ok(v.clone()),
             Some(Err((code, message))) => Err(RpcFailure::Rpc {
                 code: *code,
-                message: message.clone(),
+                detail: message.clone(),
             }),
             None => Err(RpcFailure::Rpc {
                 code: -32601,
-                message: "method not found".into(),
+                detail: "method not found".into(),
             }),
         }
     }
@@ -267,7 +267,7 @@ fn would_fail_and_unreachable() {
     impl EndpointRpc for Down {
         fn call(&self, _: String, _: String) -> Result<String, RpcFailure> {
             Err(RpcFailure::Unreachable {
-                message: "timeout".into(),
+                detail: "timeout".into(),
             })
         }
     }

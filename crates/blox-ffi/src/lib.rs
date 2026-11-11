@@ -152,10 +152,12 @@ pub fn parse_offer(uri: String) -> Result<OfferInfo, FfiError> {
 
 #[derive(Debug, thiserror::Error, uniffi::Error)]
 pub enum RpcFailure {
-    #[error("unreachable: {message}")]
-    Unreachable { message: String },
-    #[error("{message}")]
-    Rpc { code: i64, message: String },
+    // `detail`, not `message`: Kotlin error classes can't have a field named `message`
+    // (it collides with `Throwable.message`).
+    #[error("unreachable: {detail}")]
+    Unreachable { detail: String },
+    #[error("{detail}")]
+    Rpc { code: i64, detail: String },
 }
 
 /// A chain endpoint the user configured (§10.3). The app implements this over HTTP:
@@ -173,8 +175,11 @@ impl ChainRpc for RpcAdapter {
         match self.0.call(method.to_owned(), params.to_string()) {
             Ok(json) => serde_json::from_str(&json)
                 .map_err(|_| RpcError::Unreachable("the endpoint's answer is not JSON".into())),
-            Err(RpcFailure::Unreachable { message }) => Err(RpcError::Unreachable(message)),
-            Err(RpcFailure::Rpc { code, message }) => Err(RpcError::Rpc { code, message }),
+            Err(RpcFailure::Unreachable { detail }) => Err(RpcError::Unreachable(detail)),
+            Err(RpcFailure::Rpc { code, detail }) => Err(RpcError::Rpc {
+                code,
+                message: detail,
+            }),
         }
     }
 }

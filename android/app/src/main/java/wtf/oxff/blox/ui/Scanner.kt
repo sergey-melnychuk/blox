@@ -33,10 +33,10 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.BinaryBitmap
 import com.google.zxing.DecodeHintType
+import com.google.zxing.MultiFormatReader
 import com.google.zxing.NotFoundException
 import com.google.zxing.PlanarYUVLuminanceSource
 import com.google.zxing.common.HybridBinarizer
-import com.google.zxing.qrcode.QRCodeReader
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicBoolean
 
@@ -66,14 +66,18 @@ private fun CameraPreview(onResult: (String) -> Unit) {
     val owner = LocalLifecycleOwner.current
     val done = remember { AtomicBoolean(false) }
     val executor = remember { Executors.newSingleThreadExecutor() }
-    val reader = remember { QRCodeReader() }
-    val hints = remember {
-        mapOf(
-            DecodeHintType.POSSIBLE_FORMATS to listOf(BarcodeFormat.QR_CODE),
-            DecodeHintType.TRY_HARDER to true,
-            // `blox rpc` draws light-on-dark for dark terminals.
-            DecodeHintType.ALSO_INVERTED to true,
-        )
+    // MultiFormatReader, not QRCodeReader: only it honors ALSO_INVERTED, which the
+    // light-on-dark QR that `blox rpc` draws for dark terminals needs.
+    val reader = remember {
+        MultiFormatReader().apply {
+            setHints(
+                mapOf(
+                    DecodeHintType.POSSIBLE_FORMATS to listOf(BarcodeFormat.QR_CODE),
+                    DecodeHintType.TRY_HARDER to true,
+                    DecodeHintType.ALSO_INVERTED to true,
+                ),
+            )
+        }
     }
     DisposableEffect(Unit) { onDispose { executor.shutdown() } }
 
@@ -87,7 +91,7 @@ private fun CameraPreview(onResult: (String) -> Unit) {
                 .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
                 .build()
             analysis.setAnalyzer(executor) { image ->
-                val text = decode(image, reader, hints)
+                val text = decode(image, reader)
                 image.close()
                 if (text != null && text.startsWith(PREFIX) && done.compareAndSet(false, true)) {
                     ContextCompat.getMainExecutor(context).execute { onResult(text) }
@@ -100,13 +104,13 @@ private fun CameraPreview(onResult: (String) -> Unit) {
     })
 }
 
-private fun decode(image: ImageProxy, reader: QRCodeReader, hints: Map<DecodeHintType, Any>): String? {
+private fun decode(image: ImageProxy, reader: MultiFormatReader): String? {
     val plane = image.planes[0]
     val buf = plane.buffer
     val bytes = ByteArray(buf.remaining()).also { buf.get(it) }
     val source = PlanarYUVLuminanceSource(bytes, plane.rowStride, image.height, 0, 0, image.width, image.height, false)
     return try {
-        reader.decode(BinaryBitmap(HybridBinarizer(source)), hints).text
+        reader.decodeWithState(BinaryBitmap(HybridBinarizer(source))).text
     } catch (_: NotFoundException) {
         null
     } catch (_: Exception) {

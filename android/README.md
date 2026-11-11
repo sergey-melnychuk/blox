@@ -1,8 +1,7 @@
 # Blox keystore — Android
 
-> **Status:** the connections UI (PLAN.md step 5.2) was written on a machine without the
-> Android SDK and has not been compiled yet. Build it, fix what the compiler finds, and run
-> the §13.4 device checks.
+> **Status:** the connections UI (PLAN.md step 5.2) builds. The §13.4 device checks below
+> are still to do.
 
 The phone-side keystore (BLOX.md §10). Kotlin + Jetpack Compose on top of the shared Rust
 core (`crates/blox-ffi`, UniFFI). The app does UI, the Android Keystore and networking;
@@ -69,7 +68,7 @@ described at the top of `crates/blox-ffi/src/lib.rs` and exercised by its tests.
 
 ## What to verify on a device (BLOX.md §13.4)
 
-- [ ] The app builds (it was written without the Android SDK; expect small compiler fixes)
+- [x] The app builds
 - [ ] Adding a signer reports StrongBox or TEE; several signers; removing one deletes its key
 - [ ] Approve works with fingerprint, face (class 3) and the device-PIN fallback (API 30+)
 - [ ] Removing the screen lock invalidates the seed keys; restoring each signer from its phrase gives the same address; connections keep working

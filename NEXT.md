@@ -6,8 +6,8 @@ through the relay, which authorizes writes with connection tokens and keeps mess
 The JSON-RPC adapter (`blox rpc`) is retired. See BLOX.md §16.
 
 **Done so far:** M1, M2 (retired), M3, M4, the Rust side of M5
-(`blox-ffi`), M6 except browser checks, and M7's files. The Android app (M5) is written but
-not yet compiled. Step-by-step status, notes and what's left: PLAN.md.
+(`blox-ffi`), M6 except browser checks, and M7's files. The Android app (M5) builds but has
+not been checked on a device yet. Step-by-step status, notes and what's left: PLAN.md.
 
 ## M3: connections (Rust)
 
@@ -28,7 +28,7 @@ not yet compiled. Step-by-step status, notes and what's left: PLAN.md.
 
 ## M5: Android
 
-`[~]` = written, not compiled yet.
+`[~]` = written and building, not yet checked on a device.
 
 - [~] Signers: add (generate + backup check), remove (ends connections, auth + typed confirmation, deletes the wrapping key and transport keys), view phrase; one wrapping key per signer; transport keys under `blox.transport.wrap.v1`
 - [~] Import only in debug builds (anvil test phrase); restore of existing signers in all builds
@@ -38,7 +38,8 @@ not yet compiled. Step-by-step status, notes and what's left: PLAN.md.
 - [~] `ChainRpc` foreign trait (`EndpointRpc`; Rust side done and tested; OkHttp implementation written); filling and sending in Rust
 - [~] Review screen: filled fields, endpoint host, would-fail and no-endpoint states, "Sent · hash" / "Returned to the site"
 - [~] Audit log (JSON lines, exported as text; Room and a viewer later)
-- [ ] Build the app, on-device checks (§13.4), an instrumented test of the bindings against `test-vectors/`
+- [x] Build the app
+- [ ] On-device checks (§13.4), an instrumented test of the bindings against `test-vectors/`
 - [ ] Carried over: the recovery phrase held as a `String` in Compose state
 
 ## M6: Web SDK

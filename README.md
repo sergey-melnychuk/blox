@@ -12,8 +12,8 @@ everything is end-to-end encrypted, and it accepts writes only from connected pa
 The full design is in [BLOX.md](BLOX.md). The implementation status is in [PLAN.md](PLAN.md).
 
 > **Status:** the protocol, relay, Rust requester, mock keystore and web SDK are implemented
-> and tested (including against anvil and through `@wagmi/core`). The Android app is written
-> but has not been built or run on a device yet, and there is no release yet.
+> and tested (including against anvil and through `@wagmi/core`). The Android app builds
+> but has not been checked on a device yet, and there is no release yet.
 
 | Part | Where |
 |---|---|
