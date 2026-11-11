@@ -1,0 +1,164 @@
+# Implementation plan
+
+Implements BLOX.md (connections, relay authorization, phone-filled requests, web SDK).
+One commit per step; this file is updated in the same commit with the
+step's status and anything implementation-specific worth knowing.
+
+Status: `[ ]` to do · `[~]` in progress · `[x]` done · `[!]` needs the user (can't be done or
+verified on this machine).
+
+**This machine:** Rust 1.99, Foundry 1.8.3 (anvil), Deno 1.46 (runs the TypeScript SDK and its
+tests), network access. **No Android SDK/NDK and no browser:** Kotlin is written but not
+compiled here, and browser-only APIs (IndexedDB, Web Locks, the modal) are written against the
+standards and tested only where Deno provides them.
+
+**Rule for every step:** `cargo test --workspace` (and `deno test` once the SDK exists) passes
+before the commit. Crates that a step's protocol change would break are temporarily excluded
+from the workspace (`[workspace] exclude`) and brought back in a later step; the exclusions are
+listed below while they exist.
+
+---
+
+## Step 0 — Spec and plan  `[x]`
+- Commit BLOX.md, NEXT.md and this plan.
+
+## M3 — connections (Rust)
+
+### 3.1 Protocol primitives in `blox-proto` (additive)  `[ ]`
+- `ed25519-dalek` dependency. `ident`: Ed25519 signing/verifying keys (secret bytes for storage,
+  `Debug` hides values), `InboxId` (the verifying key, base64url, 43 chars).
+- `relay_url::normalize` (§4.3) and the QR relay field mapping (§5.1).
+- `token`: body encoding, `token_id`, signing by each party, verification, `Blox-Token` header (§4.3).
+- `reqsig`: `Authorization: Blox <ts>.<sig>` build and verify, with the clock error kept
+  distinct from a bad signature (§4.4).
+- `statement`: render the connection statement exactly (§5.2).
+- `api`: the relay's JSON shapes and error codes (§8.2), shared by the relay and the clients.
+- Unit tests for each.
+
+### 3.2 Retire the JSON-RPC adapter  `[ ]`
+- Delete `blox-adapter` and `blox-cli` (and the `cast`/`forge` tests). `TxRequest`/`Fill` stay
+  in `blox-evm` for M4.
+
+### 3.3 Relay v1: inboxes with signature checks  `[ ]`
+- Routes of §8.2: write (token or ticket), signed SSE read with several readers per inbox,
+  signed ack, ticket registration, revocation, `/v1/info` with `now`.
+- Store: per-writer quota (4), readers per inbox (8), tickets (hash → inbox, expiry, used),
+  revocations (token_id → expiry), sweeps for all of them.
+- Rate limits per IP and per writer key; revoke counts as a write.
+- `{ "error": code }` bodies; CORS (tower-http); logging rules for the new headers.
+- Limits and CLI flags from §8.4; TTL 5 min.
+- Relay API tests rewritten: the §13.2 relay checks and §13.3.
+- The old mock-keystore session tests (old relay API) are removed here; 3.6 replaces them.
+
+### 3.4 Connection protocol in `blox-proto`  `[ ]`
+- Envelope: `spk` always present, `bind` sealed with HPKE `auth_psk`, `message` with `auth`,
+  AAD bound to the recipient's inbox key (§4.5).
+- Messages: `bind`, `bound`, `sign_request`, `sign_response`, `cancel`, `unbind` (§4.6, §6).
+- Offer (QR payload) with ticket and PSK (§5.1).
+- Sans-IO state machines: requester connect attempt (offer → bind check → countersign → bound),
+  keystore accept (offer → token + statement + bind; bound → connection), and a live
+  `Connection` that seals to and opens from its peer. Replay set with 10-minute retention.
+- The account signature on the statement is checked by the caller (needs secp256k1, which
+  lives in `blox-evm`).
+- Remove the old session modules (`mailbox`, `session`, `peer`); regenerate `test-vectors/`.
+- `blox-evm`: the minimum to compile against the new messages (drop the adapter-era
+  `verify.rs`; `prepare` takes the connection's account instead of a request field). 4.1
+  rewrites it properly.
+- Temporarily exclude `blox-client`, `blox-mock-keystore`, `blox-ffi` from the workspace.
+
+### 3.5 Rust requester (`blox-client`)  `[ ]`
+- Relay client: signed requests, relay time offset (§4.8) with one retry after `401 clock`,
+  error codes mapped to client errors, SSE reader that reconnects.
+- `blox-evm`: sign and verify the connection statement (EIP-191).
+- `Requester`: connect (QR callback, ticket registration, bind checks incl. the account
+  signature via `blox-evm`), connection store (file with 0600, memory), generic
+  `request(SignRequest) -> SignResponse` with one request in flight, cancel on timeout,
+  `disconnect` (unbind + revoke), `verify_connection` for servers.
+- Back in the workspace (with `blox-evm` as a dependency).
+
+### 3.6 Mock keystore and the M3 integration tests  `[ ]`
+- `blox-mock-keystore`: signers with transport keys, accept an offer, wait for `bound` (revoke
+  after the timeout), connection registry, inbox readers, dispatch by `spk`, answer requests
+  with a handler, `cancel`, `unbind`, disconnect.
+- Integration tests through a real relay: connect; restart from the store; two connections to
+  one signer are isolated; two requesters sharing one store; cancel; disconnect from either side
+  (403 afterwards); a used ticket; a missing `bound` revokes; spk/statement tampering; 10-minute
+  client clock skew; the log-leak test.
+- Back in the workspace.
+
+## M4 — requests (Rust)
+
+### 4.1 `blox-evm`: intent, filling, signing, checks  `[ ]`
+- Strict decoding of `evm.send` / `evm.sign_tx` payloads (no extra fields), `personal_sign`,
+  `typed_data`; refusals of §6.3.
+- `ChainRpc` trait (synchronous, JSON in and out, so UniFFI can expose it as a foreign trait)
+  and the filler of §10.4: nonce rule, type 2 vs legacy, priority fee fallback, gas × 1.2,
+  `would_fail`, balance warning.
+- Signing and responses (`sent`, `signed_tx`, `signed`, `failed`), the statement signature, and
+  the requester-side checks of §9.5 (replacing the adapter-era `verify.rs`).
+- Display: signer, endpoint host ("Sent via" / "Returned to the site").
+
+### 4.2 Requester calls  `[ ]`
+- `send`, `sign_transaction`, `personal_sign`, `sign_typed_data` on `Requester`, with the §9.5
+  checks and `bad_response`.
+
+### 4.3 Mock keystore with anvil  `[ ]`
+- Real filling and broadcasting against an anvil endpoint, two signers, acknowledgement only
+  after answering, stored answers for redelivery (§10.6, §10.8).
+- The §13.1 gates that need no phone or browser: send, consecutive nonces, sign_tx then
+  broadcast by the requester, type 2 and legacy (`--hardfork berlin`), would_fail,
+  no_endpoint, decode_failed, two signers, message signatures, offline-then-online within 5 min,
+  crash redelivery. Skip with a message when anvil is missing.
+
+### 4.4 Runnable mock keystore, example requester, `RUN.md`  `[ ]`
+- `blox-mock-keystore` binary: reads offer URIs on stdin, auto-approves with test signers,
+  fills and sends through a given endpoint. Used by `RUN.md` and by the SDK's Deno tests.
+- `blox-client` example that connects and sends; `RUN.md` rewritten for relay + mock keystore +
+  anvil.
+
+## M5 — Android
+
+### 5.1 `blox-ffi` for the connection protocol  `[ ]`
+- Back in the workspace. UniFFI API for the app: transport keys, offer parsing, accept and
+  bound, inbox dispatch, request preparation and filling through a `ChainRpc` foreign trait,
+  signing and sending, stored answers, relay request signatures, mnemonic helpers. Rust tests
+  drive it like the app would.
+
+### 5.2 Android app  `[!]`
+- Multiple signers (one wrapping key each), transport keys, settings (endpoints, relays), connect
+  screen, connection list, inbox reading, request queue and review screen, audit log.
+- **Written here but not compiled:** no Android SDK on this machine. Building and the §13.4
+  device checks are for the user.
+
+## M6 — web SDK
+
+### 6.1 Protocol in TypeScript  `[ ]`
+- `sdk/js`: base64url, Base45, padding, HPKE (`auth`, `auth_psk`) over WebCrypto, Ed25519
+  request signatures, tokens, offer, statement. Passes `test-vectors/` under `deno test`.
+
+### 6.2 Requester  `[ ]`
+- Relay client (fetch + SSE parsing, relay time), connect, requests with one in flight, cancel
+  (incl. `sessionStorage` after reload), disconnect, storage (IndexedDB with non-extractable
+  keys; memory for tests), Web Locks where available, EVM checks (`@noble`), `verifyConnection`.
+- Deno integration test against the Rust relay and mock keystore (with anvil).
+
+### 6.3 Provider, wagmi connector, modal  `[ ]`
+- EIP-1193 provider (§9.3 tables), `@blox/sdk/wagmi`, the modal and toast in a closed shadow
+  root with an embedded QR encoder.
+- Deno test with `@wagmi/core` against relay + mock keystore + anvil.
+
+### 6.4 Demo page  `[ ]`
+- A static wagmi demo page.
+- **Browser checks** (IndexedDB non-extractable keys, Safari, the one-dependency Vite/Next.js
+  check) `[!]`: need a browser and a phone.
+
+## M7 — release
+
+### 7.1 Deployment files and README  `[ ]`
+- `deploy/Dockerfile`, `deploy/Caddyfile`, README per §14.2.
+- **Deploying `relay.example.com`, the release key and reproducible signed APKs** `[!]`: the user's.
+
+---
+
+## Notes
+(Implementation-specific details are added here as steps complete.)

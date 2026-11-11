@@ -1,57 +1,54 @@
 # Next steps
 
-**Done so far:** protocol, relay, adapter (`blox rpc` and the embeddable `blox-adapter`), and
-the Android keystore app. The full round trip (`cast` → phone approval → mined on anvil) works
-on a real phone over the local network.
+**Plan change (2026-11-10):** the phone fills, signs and broadcasts (or returns the signed
+transaction); sites and apps connect to one signer once with a QR code and then send intent
+through the relay, which authorizes writes with connection tokens and keeps messages 5 minutes.
+The JSON-RPC adapter (`blox rpc`) is retired. See BLOX.md §16.
 
-Suggested order: **1, then 2.** The relay deploy is small, makes Blox usable outside the
-LAN, and lets the gate integration run against the real relay from the start.
+**Done so far:** protocol, relay, session handling (M1); the JSON-RPC adapter (M2, now retired);
+Android key storage, scanning and the session screen (part of the old M3). `RUN.md` and
+`android/README.md` still describe the retired `cast` flow until M3–M5 replace it.
 
-## 1. M4: deploy the relay at `relay.example.com`
+## M3: connections (Rust)
 
-Everything currently works only while the phone is on the same Wi-Fi. A public relay makes it
-work anywhere (including mobile data) and makes the default URL real. It's also the point
-where release builds can be tested, since they refuse plain HTTP.
+- [ ] `blox-proto`: Ed25519 connection tokens (§4.3), request signatures (§4.4), the new envelope with `bind` / `message` (§4.5), the QR payload with ticket and PSK (§5.1), the connection statement with its exact format (§5.2), relay URL normalization (§4.3); test vectors with fixed ephemeral keys
+- [ ] `blox-relay`: inboxes keyed by Ed25519 keys, several readers per inbox, signed reads and acks, token-checked writes, tickets, revocation, TTL 5 min, the §8.4 limits (incl. 4 queued per writer), CORS; `{ "error": code }` bodies and `now` in `/v1/info` (§8.2); logging rules for the new headers
+- [ ] `blox-client`: `Requester::connect`, a connection store (file by default), `disconnect`, `verify_connection`, relay time (§4.8)
+- [ ] `blox-mock-keystore`: signers with transport keys, connect (revoke on missing `bound`), connection list, disconnect
+- [ ] Gates: §13.2 relay and connection checks, §13.3
+- [ ] Remove `blox-adapter` and `blox-cli`
 
-- [ ] Dockerfile (distroless or scratch) and Caddyfile (BLOX.md §8.7)
-- [ ] Top-level README: running, self-hosting, security model (BLOX.md §14.2)
-- [ ] Deploy to the VPS, with DNS for `relay.example.com` (needs VPS/DNS access)
-- [ ] Round trip over the public relay from a phone on mobile data
-- [ ] Release APK tested against the public relay
+## M4: requests (Rust)
 
-## 2. yevm-gate integration (in the yevm repo)
+- [ ] Messages (§6): `evm.send`, `evm.sign_tx`, `cancel`, `sent` / `signed_tx` / `signed` / `failed` / `rejected`, reasons `no_endpoint` and `would_fail`
+- [ ] `blox-evm`: build the transaction from intent plus endpoint data (reuse `TxRequest` / `Fill` from `rpc.rs`), the estimate-gas check, display updates
+- [ ] `blox-client`: `send`, `sign_transaction`, `personal_sign`, `sign_typed_data` with the §9.5 checks
+- [ ] Mock keystore with an anvil endpoint and two signers; acknowledge requests only once answered, store answers for redelivery (§10.6, §10.8); port the anvil tests to the §13.1 gates
+- [ ] Rewrite `RUN.md`
 
-Gate accepts `eth_sendTransaction`, simulates it with yevm, shows the `BLOX:` QR code next to
-WalletConnect, and sends the request to the phone: simulate, then sign, then broadcast. The
-Blox side is ready (`blox-adapter`, BLOX.md §9.9).
+## M5: Android
 
-- [ ] Depend on `blox-adapter`; call `Adapter::handle` for each JSON-RPC request, forward when it returns `None`
-- [ ] `Upstream` backed by gate's `chains` table (per-chain routing)
-- [ ] `Hooks::before_sign`: simulate the fully filled transaction, show side effects, veto on reject
-- [ ] `Hooks::show_qr`: render the `BLOX:` code in the web UI
-- [ ] Move gate from alloy 1.7 to 2.x (both versions can be built in together meanwhile)
+- [ ] Signers: add (generate + backup check), remove (ends connections, auth + typed confirmation, deletes the wrapping key and transport keys), view phrase; one wrapping key per signer; transport keys under `blox.transport.wrap.v1`
+- [ ] Import only in debug builds (anvil test phrase); restore of existing signers in all builds
+- [ ] Connect screen (signer picker, remember-for, biometric, statement signature); connection list per signer with disconnect
+- [ ] Reading inboxes in the foreground; requests grouped by connection, cancelled and duplicate-looking requests; stored answers for redelivered requests (§10.6)
+- [ ] Settings: chain endpoints (checked with `eth_chainId`), relay list with the consent prompt
+- [ ] `ChainRpc` foreign trait over OkHttp; filling and sending in Rust
+- [ ] Review screen: filled fields, endpoint host, would-fail and no-endpoint states, "Sent · hash" / "Returned to the site"
+- [ ] Carried over: on-device checks (§13.4), audit log, the recovery phrase held as a `String` in Compose state
 
-The yevm repo has uncommitted work in progress: do this on a branch, only when ready.
+## M6: Web SDK
 
-## 3. Finish M3 (Android)
+- [ ] `@blox/sdk` on WebCrypto (no wasm): non-extractable keys in IndexedDB, Web Locks for connecting and one request in flight, `sessionStorage` cancel after reload (§9.2, §9.6)
+- [ ] The modal (shadow root, request toast), `verifyConnection`
+- [ ] EIP-1193 provider (§9.3 method and error tables) and the wagmi connector `@blox/sdk/wagmi`
+- [ ] Node test with `@wagmi/core` against the Rust relay, mock keystore and anvil; a wagmi demo page; the one-dependency check in fresh Vite and Next.js apps
 
-- [ ] On-device checks (BLOX.md §13.4): StrongBox/TEE shown, fingerprint and PIN fallback,
-      screenshots blocked, session ends after 30 s in the background, multi-transaction
-      `forge script` in one scan, QR code scans from light and dark terminal themes
-- [ ] Audit log (Room), BLOX.md §10.8
-- [ ] Add more accounts (derive index 1, 2, …) from the home screen
-- [ ] Reproducible, signed release builds; publish checksums and certificate fingerprint (§10.1)
-- [ ] App icon and visual polish
+## M7: Deploy and release
 
-## 4. Security pass before real funds
+- [ ] Dockerfile and Caddyfile, deploy `relay.example.com`, README (§14.2), reproducible signed APK
 
-- [ ] Onboarding keeps the recovery phrase in Compose UI state as a `String`, which can't be wiped. Minimise or replace it
-- [ ] Review edge cases: requests that time out, retries after a reconnect, key invalidated mid-session
-- [ ] Test `--timeout` and `--idle-timeout` paths in the adapter (only the join timeout is tested)
-- [ ] Independent review of the protocol and key handling
+## Later
 
-## Also open
-
-- [ ] A real viem test (needs Node) in place of the raw JSON-RPC stand-in
-- [ ] Decide whether the phone should run yevm-core itself, so simulation happens on the trusted
-      device (brings yevm's PolyForm Noncommercial license into the app)
+- v2 (BLOX.md §12): push and a background listener, per-connection policies, simulation with yevm (license first), importing mnemonics in release builds, more accounts per signer, iOS
+- yevm-gate: use the SDK instead of `blox-adapter`
