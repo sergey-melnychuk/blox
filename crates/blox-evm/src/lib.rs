@@ -1,12 +1,11 @@
-//! EVM support for Blox: transaction decoding, keystore-side signing and
-//! adapter-side response verification (BLOX.md §6.3, §9.4, §9.5, §10.4).
+//! EVM support for Blox: request decoding, keystore-side filling and signing, and
+//! requester-side checks (BLOX.md §6.3, §9.5, §10.4).
 
 pub mod caip;
 pub mod display;
 pub mod rpc;
 pub mod sign;
 pub mod tx;
-pub mod verify;
 
 pub use alloy_primitives::{Address, B256, U256};
 

@@ -1,39 +1,37 @@
 {
-  "description": "Blox wire format v1 (BLOX.md §2.1, §4, §5.1). Binary values are base64url without padding unless noted.",
+  "description": "Blox wire format v1 (BLOX.md §4, §5). Binary values are unpadded base64url unless noted.",
   "envelopes": [
     {
-      "envelope": "AQEy1mtAPEOvmKmr5AgpvHHVebdHmDUrJLN7vkd2dfrFUHWOCQt-Pr0pgNp4CU54KGlHMrJ_cz6djKC4csU4zchCHmxyzZ0Cj3cLRniwN9Ua4YKMqrjvtvhuWddHqTNyonnHhQFzE6y3G9sIKJaZrpeaYjK1WkCzO13S_cHRg4TFqtTrK4FHpJfjHRH0iZpuhM0hvVDdKazdQT62akixvnhbRlWayuNgr0raEc9lGdx3-jkVTKTCakFqXXhtBFhe2yDdyalXkVG88iCgCA0akj4KXJWNa0rw6NlXk5VAEYxwWBZI2ivvV2-4Z3s9X1_JzOAfXyV-tt7DOEqn2TtnhAHkzPH_zVVSkkndA1bk0u6RZcvfeWkT00rRnqTihYSc2kkWBhi1Y9VXYz5iTzJpvNjbKNoSdF23jPsW7L3js-bZnKlrbw82SfJJEjX1x7tAmnLJHLQfaQ27ljS5OuPVDtfSPNHZdb0Z1IgqbRQHKtRNyi6vv89683fa1u7dt3LHoSg0E7FnkvgiUspWUFTtcmwfOLCikDNLbe7ZXk8rMxan4Id3dfZ77KgDd_ussmllzlwYhKgDECbUFCBkdosjAPZd52cfWBj0XC5GjGP_H9ruIa8qwvhIayP0AJ6uLpNdZGn4MKp42pmFbk74yqHVMEx36AN5A2JEmOSEjD3dfnsrQmw0dzGtiCMd04VTNroTsA-m1vJFAHfJ7M72SvY6nxh8JssewppQ70EP-vXT0oGVsy3O7Dazwzx1sqaUY8rD-p_9B_EjW4JBgePzHL0CYdVvKLrchbwY5gAo7GACXGF6fT76NFgMvtHTyVk61SBb47ENp7Hs4tcSGbA8KAPKn1MDaky_KXBOIMVEgZThNIdf5RVtej9A2A3x9-AfFl_kCN1USESYFTENVYBf2krJgIz3M3j9DG3uX_4XVjlA81G4LwjavpYSTPepEyDqldtZG7bEXgINiXvbm0DSVS_MOShG7zz5ngWdNZJqPl_CQTiHTM47Zd4XXqN6bylO3ql_F_CoAxRYkUT6_e9hAOwofKRc0-FOvSxwHmqi0Wxjk5ASIj33ntjW3w6D-ahQ7g1qbA4MdjNdi42E-3qKtsVLV8I7isGHZkzSvT93icXqY7qezFRA0xhrRK5I7y7E9QuMcHXhY6XPoU9FFu_bOxfpPAkO_DCDRNcaLodlitjuqFC3HZG19oQx3FXNDECFUE1yqAMIRmbntMP6LFjcHyWSlokbe95jczpO_tABW3nEUGv6X4zrbO91DhJNwSg5CJemkPirQS0qbLqhfTElItE9iIywVNC42c_5NNwyGSKzcwidmlYYtlPWPfXJGwT5wJZZsLMGNHcdTrCRNT2s8c3qTNx8Xez7-r4K3oAjfa_jf6G7O0AJlIxTKfwPeqIcovkPK9fRhKNckO3mJlfA-ddXhUAP5i5lKt_9vl-fD6ElGx_Bf1PLXr3Yvof2169XY_Ni4-0",
-      "name": "hello keystore→adapter",
-      "plaintext_utf8": "{\"id\":\"oaGhoaGhoaGhoaGhoaGhoQ\",\"ts\":1760000000,\"type\":\"hello\",\"body\":{\"mk\":\"Zix5CGzMJQvl68VLHg6elMDW7YmvJqZC-ISntm43uVg\"}}",
-      "recipient_mailbox": "ETalGySalfKzroot9O0777JtWHJXeqCEn6xZvrjv5A8",
-      "sender": "keystore"
+      "envelope": "AQEy1mtAPEOvmKmr5AgpvHHVebdHmDUrJLN7vkd2dfrFUKpitbwUJ71tvWDcLu_rhsH1X_j5j1xJfwM0x8iNT-RuyjQ7kEKS7yBRCzGNV4pq1fITT8sJwTxaP4qjvROaJf41RY6g36fymt1xmJ5ARhAo4W0twVWGfVz0v1joIlhG-HFumo7SvD65MaFFwYH_g7d7wBNH_VQ7n7INjNJqQx6ocpdBXg6a3kyhFnXLOpiSoqSeuMaTVqgVp_K_lGjhUIbG3KaejcpmCRqRG1IeeigiR_-ToM52AAbp4bgu2PCTX913eFI1wI7x2G4jMYuywAKkUkBuNiMupzpesLqoizLrTU7TntzDGDzQrdz9taI8x8nfMRYm-uu6cctZOCiNvDV_FYurNaE_1NaX4dAUxXY2Dy5y8CpfOSIWhAJe-D1wTxFHl4bf4Us-3XgE8zY7pw-3MqAR1iWWcQPyecR0P74zFbOWnCV57G9d0ss3dbf00kTZ-R891LEzuYLkrKK7uSP9qEryik-6kDJSxxw6Y9RDuas1H7FJCpFf9Ec-uo9i3D5VYMJmk8g1Exsr9KmOd502_FC7y7FUkvPle0NOUjVcE6cLtT5JoDneI5c0wnC7X3s17CP94NKlu3nMFY3yU6bRrUU0x--byGd5_N9InLQT_QCKb8IrI_X3OHGBuUOw2LqIHmcg9mFCb1fGwORdehpBDmJfjFcq_zhAQ82hQRI2gKgehQWKGLNo0ELntrI0vIqa3H-67Ry11bvFEFnJ5xXoYdFLygRk7aIr-I5q9t1w7Ub_IEGhBCrTgxx-UGb1jbR12S3U5gjShuUCHDzk4fY8RCY5D0pD4O8q_20UFCFkhbKa8hMg1pkJwE2P2iKgMrRv9vQUdVFV1gnW1W0I54oy44GYVgb5g55_CS650ohwIQrtestmj3Z6PLm_6U7YE_w3I7T80GYZTHV7-V3KPUx4K8AStQP8B7Vi43Qz_oWZY_Lgr7BAZLxrmqUAuSRmQfpAI83GELiAVRvN25D-p29O60yHqJpDw3JzLKEyIgkglUNsmjNcX1_1TDvDCWzldRTThvN4MklvKkCCuJsj-CYCUu4ZStsOyU4P7Otf96n3qHdglCjRWCjQumTG93ihsucPjF6f_HxPGTqLCpLw20neEgrZvQWfg1wLl74gPi0cenHqKFh5FQ5IAypXgIFGB58RwqMC1Ziz6NCbzc1-2bxjfY32_wxoLWYrWQWvzMR4_7vngFY6Yp7lWrbNlDE-ofEHUZGo8zyJRFuNJFXGaS1VFCtVdJ_Ywv7CUCeGi7FHJh7dQWygpS4Hj2KshhJAS1GecP6fit7EkXUG1pHBu4gjPTWPsDeLnXEofl-WBHrBA1EX4S3MNZSHFfQfRF_AqnWL583lu4NHTklQfZdVwE_pBMBwydVtYFrjWweqAF461u3ISjPD7p8UATZqbFHApStQsV7d0uNnCMmXR51XFAI",
+      "name": "bind keystore→requester (mode_auth_psk)",
+      "plaintext_utf8": "{\"id\":\"oaGhoaGhoaGhoaGhoaGhoQ\",\"ts\":1762776000,\"type\":\"bind\",\"body\":{\"token\":\"AYqI4910CfGV_VLbLTy6XXLKZwm_HZQSG_N0iAG0D29c4SVgapkyjs0eEQLrTCaU5XvF66TkNpO70G3u6SSv2SCBOXcOqH0XX1ajVGbDTH7My42KkbTuN6Jd9g9bj8mzlDLWa0A8Q6-YqavkCCm8cdV5t0eYNSsks3u-R3Z1-sVQAAAAAGkR08AAAAAAaTlgwBVodHRwczovL2Jsb3guMHhmZi53dGaIiYxPmWo_cfkEfNFZT5kr3CRySHAQgMQFhIdoiT6HBAUvyBEDk9asJseyPpGXBRLUhb6Psrfo27G-VM2Q--0G\",\"account\":\"0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266\",\"statement\":\"Blox connection\\nSite: Example (claimed)\\nSite key: iojj3XQJ8ZX9UtstPLpdcspnCb8dlBIb83SIAbQPb1w\\nKeystore key: gTl3Dqh9F19Wo1Rmw0x-zMuNipG07jeiXfYPW4_Js5Q\\nAccount: 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266\\nNonce: RERERERERERERERERERERA\\nRelay: https://relay.example.com\\nIssued: 2025-11-10T12:00:00Z\\nExpires: 2025-12-10T12:00:00Z\",\"signature\":\"0x00\"}}",
+      "recipient": "requester"
     },
     {
-      "envelope": "AQJ3YaY1Du0Ij4A2Am9C0meWw-Fno2O4sW7kSMw3i1Q9R9XU8baEm8JQ1sO2sYuqiy0mPlNpZTP6t_Ij0N3urOVhr7fFCBq1U_q-dBd1946mTDf3tcd-GusZGZq50F-TjyHbRwse2D9yTqK3mZhv2JkLadCXH9Rr3w7zU3_KDu0rM9W2dn1PvahUXjtSQU_uyDYPLnvz6uhJieCkkiJrCwhHJgVSjL1MMUsPGzd3VnMkz4iXOoL6FpWAUHeYUwqpsoN44ip8KOzH8J0Lo9-4u_EHZSYTVWAJCIvLY9Y06xNm9wXJOK-oCHBut7W-IpZ5CnN1svZUXY25VRQ9WMOzbeojzmCOBmI64KeNz15UU6wrZJuz1c0RNB4LmI6iSAksdfH-hg5kOTDyAax80ZIa3dJ4sxN6GzlaOBJ7O2BTlREs0Slcj0_Lx0r8_StXfNPQMAfxR6wsbesz4ubVAbTyx-84bOf6E2N4lJJsQ8woKIsnV1eSKEQMxaGp8HwoaiQ_2wNARPt3z1yr7spvE3qZ19G0L3VFs2pj8kObJYIeS_qzMeSz6ZhVlSSdvbhyvDr71SCPc6TxODIr74IwQ4TwpzXm0cazTALmNMyWIZtqzGozIUxRyFQjt34Pif515ZXOYbDW0-i7h_54wjYyR-r6eHsR8oDgaIndIk1q_FMR8mtIr1l3tX5DJ0Vn9HX5TOpFJk2HgKp_hVCPWSg0AO5JiX_wVlINtDCBtrNeXuV-7yNYhbO-oo7c4ToXryHinxQghOFYJuz6sIRCFQ-J2xKQoCk3ejJkHrXtqwSyHdCqhmIugZtjZL4KKQG0fQp9KaN7CGI0bBvsOCc1MLMLaUhmlWOc3jAK8RrIDCgWACJzGjC_qSeUud8G6eIVN0JSz5VlCq3ccI4JagpFrgj5wJxnr7xw0NTvDO-KAn6y3T8kRmtCh1UOUf7sxWKVDqx-QOlZzB3_2-YtAnO_wDOc4wnBlMpnQLLDrXxYTwGy-k2kmW0DG_-VpjRoubR4RgZrSk1VpiFdU6Z1xIpFTqI4eXqdDeyccJzaBnpvj81-GtPdkdUOKkjJCNda0CWOjpBo2dNl3g0a-ld7qs9ZXBLLHhhnseo3UATImWUG47T3uemzvsQxkALQ347uR9GZuxh7dXixNSU7JhE_2Rh3PQQ5_wen4d5YohXm4Z_Aw_RzJ6E7tLGq6gCJvX12vPc3cD6gsLWwtiuip3_JmNyNaAXrW00EjrHVfteyfkqIJLzZ9eRfhJIZaUy5EF8WJVnNqwjmK9b3dAHc-hxYLdGjQEaoO4CLl4ytbms33BvDrjSxR4Ux5x_MeEuM6yrZFTj8p8QsW5ih5cQWYIvWPYrNfSNx68JliB1etw0d_lV90IQdS-fReVL_MSNunlCPqUD9IT0UmIvP2-QaihNIPCwSoDHEkdU6oLzf",
-      "name": "message adapter→keystore",
-      "plaintext_utf8": "{\"id\":\"oqKioqKioqKioqKioqKiog\",\"ts\":1760000001,\"type\":\"close\",\"body\":{\"reason\":\"done\"}}",
-      "recipient_mailbox": "Zix5CGzMJQvl68VLHg6elMDW7YmvJqZC-ISntm43uVg",
-      "sender": "adapter"
+      "envelope": "AQLhJWBqmTKOzR4RAutMJpTle8XrpOQ2k7vQbe7pJK_ZIHdhpjUO7QiPgDYCb0LSZ5bD4WejY7ixbuRIzDeLVD1HvMzPX9DXekdw79vioSYkfsKX-EBwAIwEc6SFTZNkWk0zIYyP63yLYA1axS_rpbCfjUGOLK-qhpKA-p0NEd5zU1ODe1derdvH1llJcyYadg8V7L-5L6JBMtgsP2aoeU_p9WEcjBoQT80NOi2CpONEPiC-UiJN6L6NOUH4PtLjQS393JIFuv4se32UsdLBfqxarP9llouGNPA5DO2G5Iq_jVDeaM6dO8ZiUsJSgwAw65si6hS06mspI2yjIE_QL4-984juruY74P_RrwBshB2QaE8_CCIAqzKmtJfjr8krHa4f9Bk2f5B0bBIzA0eJeL5UcP83eIX5DhDRwrvmuqHjh-5ubDAsQZXDzb7De9cQ2GGXKyqlUmCvS8BnZgqQrWNxScn2y7g-Uu8_1p1qtXSZWGZIVFGnB9XmkNsCrVQ6zYSKAILqAb6g-ICsjW8p4CthomvKoyTa6gwROdK149a2lzIdje2OmkxbJTDEqKdl07TA6FsCnvMR4P8Ve0zwdHJOZckhKuPfDIZ1ZjtOjymLz52lg6XSuHbrxyJ35NX-gEp-8Tu0IChJ4S1SCdGkMSeOsCJgPeW7qucBJ6QRMCXDxI3_JdAM57q5-nJDgsgPeRPaU2UTInAKb5WK7tfpLQEEj52VDp0Z_loyDKhIgoroQMnf71gvuHXIHL1k5YoEQJBoe1o2ff29LnoERfZ67R0huNz0TFlru3cWXXVCPku_W7goaknbzEQPEZMAEne_AkRj_VDv6TtafII6vDsp4VxuS6eFnoxtgmWp6F-gvSpGgubVjTfSRgoJLgLhnNP0XP91carxba9fn_JcC9wI2dYSgizKuwgPbA_MI1I5CMUSOBCH1HUYK6IU01ooqgdcAqsNItSupTQRlFKoEZKBXKmbyGVuSg5P5vVBSUjz-W8vDWI2pGfAnH05y2SaDipo4CDnvQNt-W_suQ36suvwRq9w0DaRTzj0A-lplTpK42gsDwDPb7t5B7jC840wkV1iDc-DT49vmh3FuskX0b6wHuxjlGV7RQ6lu-Hp-UXlCWwRRCHwU6S3X-0p0s5qHNiWqfDCyC9iNoj9VtetHk4Eom7thIyA7B3tV123ZFQp76DhLYlvu8Prn4ZwAh6m3o1voJGmhy6dhlTFtfzxAK-BGAkbaaCWCAd8_wHXwwrdlZVnGUiCZ71ZayKM7L6ClIaazCrHV6f0quTHSBd21Eu6H1UHPiyQOE_ntrjSLWiapCxN84-i3Bf2kl-eZ2JL6QplGdeLqurCt3wq37RXC_ofy1ATWhifRa9Lqh_9Smfh3mWN9mp4C26KBY4mbBh0OJ8dc4Om1a3FMc8OKsUAc9Ny7fIQ8LTDoYJhc47VJWZIy4QtflYUalNb-SVYXC97onb0uSA",
+      "name": "message requester→keystore (mode_auth)",
+      "plaintext_utf8": "{\"id\":\"oqKioqKioqKioqKioqKiog\",\"ts\":1762776001,\"type\":\"sign_request\",\"body\":{\"chain\":\"eip155:8453\",\"kind\":\"evm.send\",\"payload\":{\"data\":\"0x\",\"to\":\"0x70997970C51812dc3A010C7d01b50e0d17dc79C8\",\"value\":\"0x2386f26fc10000\"},\"expires_at\":1762776301}}",
+      "recipient": "keystore"
     }
   ],
   "keys": {
-    "adapter_ikm_utf8": "blox test adapter key",
-    "adapter_pk": "2fS8UTHT33a5wQiJFOvU48LzKSxozcEnEMlCHbBPQEE",
-    "keystore_ikm_utf8": "blox test keystore key",
-    "keystore_pk": "MtZrQDxDr5ipq-QIKbxx1Xm3R5g1KySze75HdnX6xVA",
-    "note": "RFC 9180 DeriveKeyPair(ikm) for DHKEM(X25519, HKDF-SHA256)",
-    "psk": "MzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzM"
+    "keystore_kem": "MtZrQDxDr5ipq-QIKbxx1Xm3R5g1KySze75HdnX6xVA",
+    "keystore_kem_ikm_utf8": "blox test keystore key",
+    "keystore_sig": "gTl3Dqh9F19Wo1Rmw0x-zMuNipG07jeiXfYPW4_Js5Q",
+    "keystore_sig_secret": "AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI",
+    "note": "Ed25519 keys from 32-byte secrets; X25519 keys by RFC 9180 DeriveKeyPair(ikm) for DHKEM(X25519, HKDF-SHA256).",
+    "psk": "MzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzM",
+    "requester_kem": "4SVgapkyjs0eEQLrTCaU5XvF66TkNpO70G3u6SSv2SA",
+    "requester_kem_ikm_utf8": "blox test requester key",
+    "requester_sig": "iojj3XQJ8ZX9UtstPLpdcspnCb8dlBIb83SIAbQPb1w",
+    "requester_sig_secret": "AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE",
+    "ticket": "RERERERERERERERERERERA",
+    "ticket_hash": "-Lzw52sbwA51oOEC0EVYK1FcNCIPMKA9pa2dy_7Foro"
   },
-  "mailbox": [
-    {
-      "mailbox_id": "ETalGySalfKzroot9O0777JtWHJXeqCEn6xZvrjv5A8",
-      "read_secret": "ERERERERERERERERERERERERERERERERERERERERERE"
-    },
-    {
-      "mailbox_id": "Zix5CGzMJQvl68VLHg6elMDW7YmvJqZC-ISntm43uVg",
-      "read_secret": "IiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiI"
-    }
-  ],
+  "offer": {
+    "label": "Example",
+    "uri": "BLOX:Y80XDH$:RPB1C/IGLAFW59PN1NE71DA7OGWI0O3.WEV90 .1HXBSW4JLDRH6+-PY62QXTL*4M0T.0P2%KL+6KXNH+DELTHAMP34GS8GS8GS8GS8GS8GS8GS8:R8CL6CL6CL6CL6CL6CL6CL6CL6CL6CL6CL6CL6CL6CL6CL66K6G-0$9FQ$DTVD"
+  },
   "padding": [
     {
       "padded_len": 1024,
@@ -50,5 +48,47 @@
       "plaintext_len": 1024
     }
   ],
-  "session_uri": "BLOX:NA0C.U+BAEZQI0F6IO$EHR TVZSEXUSR5N0QA.4.JP+X3%0A7A8*+6IJ3IOJVUU.2MJ 5Q:TRDU2$DLKERMFLYGLZL:4OWEUL-1CL6CL6CL6CL6CL6CL6CL6CL6CL6CL6CL6CL6CL6CL6CL66K6O 0EECHWEM2"
+  "relay_urls": [
+    [
+      "https://relay.example.com",
+      "https://relay.example.com",
+      ""
+    ],
+    [
+      "HTTPS://Relay.Example.COM:443/",
+      "https://relay.example.com",
+      ""
+    ],
+    [
+      "https://r.example.org:8443/relay/",
+      "https://r.example.org:8443/relay",
+      "r.example.org:8443/relay"
+    ],
+    [
+      "http://my-computer.lan:8080",
+      "http://my-computer.lan:8080",
+      "http://my-computer.lan:8080"
+    ]
+  ],
+  "request_signature": {
+    "authorization": "Blox 1762776000.pQS3HXU8H9Nf9CWaE7idOYR_El2JSS7KMcb5WtOSCOGIuJfTo13LuRdKWwuiPgc2fmDkZZkIppGHewRVEwHdAg",
+    "body_hex": "68656c6c6f",
+    "method": "POST",
+    "path": "/v1/inbox/gTl3Dqh9F19Wo1Rmw0x-zMuNipG07jeiXfYPW4_Js5Q",
+    "signer": "requester",
+    "ts": 1762776000
+  },
+  "statement": {
+    "account": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+    "label": "Example",
+    "text": "Blox connection\nSite: Example (claimed)\nSite key: iojj3XQJ8ZX9UtstPLpdcspnCb8dlBIb83SIAbQPb1w\nKeystore key: gTl3Dqh9F19Wo1Rmw0x-zMuNipG07jeiXfYPW4_Js5Q\nAccount: 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266\nNonce: RERERERERERERERERERERA\nRelay: https://relay.example.com\nIssued: 2025-11-10T12:00:00Z\nExpires: 2025-12-10T12:00:00Z"
+  },
+  "token": {
+    "countersigned": "AYqI4910CfGV_VLbLTy6XXLKZwm_HZQSG_N0iAG0D29c4SVgapkyjs0eEQLrTCaU5XvF66TkNpO70G3u6SSv2SCBOXcOqH0XX1ajVGbDTH7My42KkbTuN6Jd9g9bj8mzlDLWa0A8Q6-YqavkCCm8cdV5t0eYNSsks3u-R3Z1-sVQAAAAAGkR08AAAAAAaTlgwBVodHRwczovL2Jsb3guMHhmZi53dGaIiYxPmWo_cfkEfNFZT5kr3CRySHAQgMQFhIdoiT6HBAUvyBEDk9asJseyPpGXBRLUhb6Psrfo27G-VM2Q--0GPrDyPX823mjhW2CXgTCLOedmYf7gTJrmz8-3v9XfmSaDB8A3lFGvf8UwELrwJGebZDJIqzpqXh6F30ePwhOnCg",
+    "expires_at": 1765368000,
+    "issued_at": 1762776000,
+    "keystore_signed": "AYqI4910CfGV_VLbLTy6XXLKZwm_HZQSG_N0iAG0D29c4SVgapkyjs0eEQLrTCaU5XvF66TkNpO70G3u6SSv2SCBOXcOqH0XX1ajVGbDTH7My42KkbTuN6Jd9g9bj8mzlDLWa0A8Q6-YqavkCCm8cdV5t0eYNSsks3u-R3Z1-sVQAAAAAGkR08AAAAAAaTlgwBVodHRwczovL2Jsb3guMHhmZi53dGaIiYxPmWo_cfkEfNFZT5kr3CRySHAQgMQFhIdoiT6HBAUvyBEDk9asJseyPpGXBRLUhb6Psrfo27G-VM2Q--0G",
+    "relay": "https://relay.example.com",
+    "token_id": "lz6S2_sSc4OAZG8Qy8drcYMyfJOUKhL249lOUn6quQg"
+  }
 }

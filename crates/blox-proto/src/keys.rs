@@ -1,4 +1,4 @@
-//! Per-session X25519 transport keys and the session PSK (§4.2).
+//! X25519 transport keys (HPKE) and the bind PSK (BLOX.md §4.2).
 
 use std::fmt;
 
@@ -26,7 +26,7 @@ impl fmt::Debug for PublicKey {
     }
 }
 
-/// Ephemeral X25519 keypair for one session. Never persisted.
+/// An X25519 keypair: `s` (one per connection) or `k` (one per signer).
 #[derive(Clone)]
 pub struct KeyPair {
     pub(crate) sk: <Kem as hpke::Kem>::PrivateKey,
@@ -48,6 +48,18 @@ impl KeyPair {
     pub fn public(&self) -> PublicKey {
         PublicKey(self.pk.to_bytes().into())
     }
+
+    /// The 32-byte secret, for storage by the caller.
+    pub fn to_secret_bytes(&self) -> zeroize::Zeroizing<[u8; 32]> {
+        zeroize::Zeroizing::new(self.sk.to_bytes().into())
+    }
+
+    pub fn from_secret_bytes(secret: &[u8; 32]) -> Result<Self> {
+        let sk = <Kem as hpke::Kem>::PrivateKey::from_bytes(secret)
+            .map_err(|_| Error::Malformed("x25519 secret key"))?;
+        let pk = Kem::sk_to_pk(&sk);
+        Ok(Self { sk, pk })
+    }
 }
 
 impl fmt::Debug for KeyPair {
@@ -56,7 +68,7 @@ impl fmt::Debug for KeyPair {
     }
 }
 
-/// The 32-byte session pre-shared key. It travels only inside the QR code.
+/// The 32-byte PSK for `bind` (§4.5). It travels only inside the QR code.
 #[derive(Clone, PartialEq, Eq, Zeroize, ZeroizeOnDrop)]
 pub struct Psk(pub(crate) [u8; 32]);
 

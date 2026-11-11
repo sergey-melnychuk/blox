@@ -16,6 +16,7 @@ use axum::routing::{delete, get, post};
 use axum::{Json, Router};
 use blox_proto::api::{self, Accepted, ErrorBody, ErrorCode, TicketRegistration};
 use blox_proto::b64;
+use blox_proto::envelope::{Kind, check_header};
 use blox_proto::ident::{InboxId, Ticket, VerifyingKey};
 use blox_proto::reqsig::{self, SigError};
 use blox_proto::token::Token;
@@ -218,13 +219,8 @@ fn parse_inbox(s: &str) -> Result<InboxId, ApiError> {
 }
 
 /// The envelope header the relay may look at (§4.5): version, type and minimum length.
-/// Returns the type byte.
-fn check_envelope(bytes: &[u8]) -> Result<u8, ApiError> {
-    const MIN: usize = 2 + 32 + 32 + 16;
-    if bytes.len() < MIN || bytes[0] != blox_proto::VERSION || !matches!(bytes[1], 1 | 2) {
-        return Err(ApiError(ErrorCode::Malformed));
-    }
-    Ok(bytes[1])
+fn check_envelope(bytes: &[u8]) -> Result<Kind, ApiError> {
+    check_header(bytes).map_err(|_| ApiError(ErrorCode::Malformed))
 }
 
 fn header<'a>(headers: &'a HeaderMap, name: &str) -> Option<&'a str> {
@@ -268,7 +264,7 @@ async fn write(
     let now = state.now();
     let seq = if let Some(ticket) = header(&headers, api::HEADER_TICKET) {
         let ticket = Ticket::parse(ticket).map_err(|_| ApiError(ErrorCode::Malformed))?;
-        if kind != 1 {
+        if kind != Kind::Bind {
             return Err(ApiError(ErrorCode::Malformed));
         }
         state

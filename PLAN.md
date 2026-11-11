@@ -50,7 +50,7 @@ listed below while they exist.
 - Relay API tests rewritten: the §13.2 relay checks and §13.3.
 - The old mock-keystore session tests (old relay API) are removed here; 3.6 replaces them.
 
-### 3.4 Connection protocol in `blox-proto`  `[ ]`
+### 3.4 Connection protocol in `blox-proto`  `[x]`
 - Envelope: `spk` always present, `bind` sealed with HPKE `auth_psk`, `message` with `auth`,
   AAD bound to the recipient's inbox key (§4.5).
 - Messages: `bind`, `bound`, `sign_request`, `sign_response`, `cancel`, `unbind` (§4.6, §6).
@@ -179,3 +179,16 @@ listed below while they exist.
   `AppState::with_clock_offset` shifts the relay clock for client clock-skew tests.
   The ignored `thousand_readers_latency` gate passes in release mode (about 1 s for 1,000
   readers). The old mock-keystore session and log-leak tests are deleted; 3.6 replaces them.
+- **3.4:** `connection::{ConnectAttempt, accept_offer, PendingConnection, Connection}` are
+  sans-IO; every function that needs the time takes it (relay time). `Connection::new`
+  rebuilds a connection from a stored token and X25519 secret, and insists on both token
+  signatures, so a half-signed token never becomes a live connection. `open_bind` returns a
+  `BindCandidate`; the caller checks the account signature (EIP-191, in `blox-evm`) before
+  `accept`. A `bind` must have the token's `k` as `spk`, a statement identical to the one
+  rebuilt from the token, the requester's own keys and relay, `issued_at` within 300 s, and
+  at most 90 days of lifetime. The offer refuses labels over 32 bytes and a weak `S`. The
+  default-relay QR URI is 188 characters. `test-vectors/proto-v1.json` was regenerated:
+  tokens, token id, request signature, relay URLs, statement, bind/message envelopes, offer.
+  `blox-evm` got the minimum to compile (`verify.rs` deleted, `prepare` without the account
+  field); 4.1 rewrites it. **Workspace exclusions now:** `blox-client`, `blox-mock-keystore`,
+  `blox-ffi`.

@@ -1,8 +1,7 @@
-//! Plaintext messages (§4.4) and signing bodies (§6).
+//! Plaintext messages (BLOX.md §4.6) and their bodies (§5, §6).
 
 use serde::{Deserialize, Serialize};
 
-use crate::mailbox::MailboxId;
 use crate::{Result, b64};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -13,6 +12,12 @@ impl MsgId {
         let mut b = [0u8; 16];
         getrandom::fill(&mut b).expect("OS RNG");
         Self(b)
+    }
+}
+
+impl std::fmt::Display for MsgId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&b64::encode(self.0))
     }
 }
 
@@ -27,19 +32,21 @@ pub struct Message {
 }
 
 impl Message {
-    pub fn new(body: Body) -> Self {
+    /// A new message stamped with `ts` (relay time, §4.8).
+    pub fn at(body: Body, ts: u64) -> Self {
         Self {
             id: MsgId::generate(),
-            ts: now(),
+            ts,
             re: None,
             body,
         }
     }
 
-    pub fn reply(to: &Message, body: Body) -> Self {
+    /// A new message answering `to`, stamped with `ts`.
+    pub fn reply_at(to: MsgId, body: Body, ts: u64) -> Self {
         Self {
-            re: Some(to.id),
-            ..Self::new(body)
+            re: Some(to),
+            ..Self::at(body, ts)
         }
     }
 
@@ -55,26 +62,45 @@ impl Message {
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "type", content = "body", rename_all = "snake_case")]
 pub enum Body {
-    Hello(Hello),
+    Bind(Bind),
+    Bound(Bound),
     SignRequest(SignRequest),
     SignResponse(SignResponse),
-    Close(Close),
+    /// Withdraws the request named by `re` (§6.5).
+    Cancel(Empty),
+    /// Ends the connection (§5.5).
+    Unbind(Empty),
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub struct Hello {
-    pub mk: MailboxId,
+/// An empty body, serialized as `{}`.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Empty {}
+
+/// Keystore → requester, sealed with the PSK (§5.2).
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Bind {
+    /// The token signed by the keystore (`Blox-Token` encoding).
+    pub token: String,
+    /// Checksummed EVM address.
+    pub account: String,
+    pub statement: String,
+    /// EIP-191 signature by the account over the statement, `0x` + 65 bytes.
+    pub signature: String,
+}
+
+/// Requester → keystore: the countersigned token (§5.3).
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Bound {
+    pub token: String,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct SignRequest {
     /// CAIP-2, e.g. `eip155:8453`.
     pub chain: String,
-    /// CAIP-10, e.g. `eip155:8453:0xAbC…`.
-    pub account: String,
-    /// Namespaced payload kind, e.g. `evm.tx`.
+    /// Namespaced payload kind, e.g. `evm.send`.
     pub kind: String,
-    /// Kind-specific payload; decoded by the chain crate, never trusted as-is.
+    /// Kind-specific payload; decoded strictly by the chain crate (§6.3).
     pub payload: serde_json::Value,
     /// Informational and untrusted.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -82,21 +108,38 @@ pub struct SignRequest {
     pub expires_at: u64,
 }
 
-#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Origin {
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub client: Option<String>,
+    pub name: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub note: Option<String>,
+    pub url: Option<String>,
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "status", rename_all = "snake_case")]
 pub enum SignResponse {
-    Approved {
+    /// The endpoint accepted the transaction.
+    Sent {
+        account: String,
+        tx_hash: String,
+    },
+    /// `evm.sign_tx`: filled and signed, not broadcast.
+    SignedTx {
+        account: String,
+        tx_hash: String,
+        raw: String,
+    },
+    /// A message signature.
+    Signed {
+        account: String,
         signature: String,
-        #[serde(default, skip_serializing_if = "Option::is_none")]
-        signed_tx: Option<String>,
+    },
+    /// Signed, but the endpoint refused it or did not answer.
+    Failed {
+        account: String,
+        tx_hash: String,
+        error: String,
     },
     Rejected {
         reason: RejectReason,
@@ -110,23 +153,11 @@ pub enum RejectReason {
     Expired,
     Unsupported,
     DecodeFailed,
-    AccountUnknown,
+    NoEndpoint,
+    WouldFail,
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub struct Close {
-    pub reason: CloseReason,
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum CloseReason {
-    Done,
-    Contested,
-    Timeout,
-    Shutdown,
-}
-
+/// The local wall clock. Prefer relay time where the protocol needs agreement (§4.8).
 pub fn now() -> u64 {
     std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
@@ -144,48 +175,52 @@ mod tests {
         let m = Message {
             id: MsgId([0; 16]),
             ts: 1760000000,
-            re: None,
-            body: Body::Close(Close {
-                reason: CloseReason::Contested,
-            }),
+            re: Some(MsgId([1; 16])),
+            body: Body::Cancel(Empty {}),
         };
         let v: serde_json::Value = serde_json::from_slice(&m.to_json()).unwrap();
         assert_eq!(
             v,
-            json!({"id":"AAAAAAAAAAAAAAAAAAAAAA","ts":1760000000,"type":"close","body":{"reason":"contested"}})
+            json!({"id":"AAAAAAAAAAAAAAAAAAAAAA","ts":1760000000,"re":"AQEBAQEBAQEBAQEBAQEBAQ","type":"cancel","body":{}})
         );
-
-        let r = Body::SignResponse(SignResponse::Rejected {
-            reason: RejectReason::DecodeFailed,
-        });
-        let v = serde_json::to_value(&r).unwrap();
-        assert_eq!(
-            v,
-            json!({"type":"sign_response","body":{"status":"rejected","reason":"decode_failed"}})
-        );
+        for (resp, want) in [
+            (
+                SignResponse::Rejected {
+                    reason: RejectReason::WouldFail,
+                },
+                json!({"status":"rejected","reason":"would_fail"}),
+            ),
+            (
+                SignResponse::SignedTx {
+                    account: "a".into(),
+                    tx_hash: "h".into(),
+                    raw: "r".into(),
+                },
+                json!({"status":"signed_tx","account":"a","tx_hash":"h","raw":"r"}),
+            ),
+        ] {
+            let v = serde_json::to_value(Body::SignResponse(resp)).unwrap();
+            assert_eq!(v, json!({"type": "sign_response", "body": want}));
+        }
     }
 
     #[test]
-    fn roundtrip_sign_request() {
-        let req = Message::new(Body::SignRequest(SignRequest {
-            chain: "eip155:1".into(),
-            account: "eip155:1:0x0000000000000000000000000000000000000001".into(),
-            kind: "evm.tx".into(),
-            payload: json!({"tx": "0x02"}),
-            origin: Some(Origin {
-                client: Some("cast".into()),
-                note: None,
+    fn roundtrip_request() {
+        let req = Message::at(
+            Body::SignRequest(SignRequest {
+                chain: "eip155:1".into(),
+                kind: "evm.send".into(),
+                payload: json!({"to": null, "value": "0x0", "data": "0x"}),
+                origin: Some(Origin {
+                    name: Some("Example".into()),
+                    url: None,
+                }),
+                expires_at: 1,
             }),
-            expires_at: 1,
-        }));
-        let back = Message::from_json(&req.to_json()).unwrap();
-        assert_eq!(back, req);
-        let reply = Message::reply(
-            &req,
-            Body::SignResponse(SignResponse::Rejected {
-                reason: RejectReason::User,
-            }),
+            5,
         );
-        assert_eq!(reply.re, Some(req.id));
+        assert_eq!(Message::from_json(&req.to_json()).unwrap(), req);
+        let reply = Message::reply_at(req.id, Body::Unbind(Empty {}), 6);
+        assert_eq!((reply.re, reply.ts), (Some(req.id), 6));
     }
 }

@@ -1,7 +1,7 @@
 //! Keystore side (§10.4, §10.7): check a request, then sign it after approval.
 
 use alloy_dyn_abi::TypedData;
-use alloy_primitives::{Address, B256, U256, eip191_hash_message};
+use alloy_primitives::{B256, U256, eip191_hash_message};
 use alloy_signer::SignerSync;
 use alloy_signer_local::{MnemonicBuilder, PrivateKeySigner, coins_bip39::English};
 use blox_proto::message::{RejectReason, SignRequest, SignResponse};
@@ -27,25 +27,13 @@ impl Prepared {
     }
 }
 
-/// Checks a request against the keystore's accounts (§10.4). On failure, the
-/// returned reason goes back to the adapter as `rejected`.
-pub fn prepare(
-    req: &SignRequest,
-    accounts: &[Address],
-    now: u64,
-) -> Result<(Address, Prepared), RejectReason> {
+/// Checks a request for the connection's account (§10.4). On failure, the returned
+/// reason goes back to the requester as `rejected`.
+pub fn prepare(req: &SignRequest, now: u64) -> Result<Prepared, RejectReason> {
     if req.expires_at < now {
         return Err(RejectReason::Expired);
     }
     let chain = caip::parse_chain(&req.chain).map_err(|_| RejectReason::Unsupported)?;
-    let (acct_chain, address) =
-        caip::parse_account(&req.account).map_err(|_| RejectReason::DecodeFailed)?;
-    if acct_chain != chain {
-        return Err(RejectReason::DecodeFailed);
-    }
-    if !accounts.contains(&address) {
-        return Err(RejectReason::AccountUnknown);
-    }
     let field = |name: &str| req.payload.get(name).ok_or(RejectReason::DecodeFailed);
     let prepared = match req.kind.as_str() {
         KIND_TX => {
@@ -78,29 +66,27 @@ pub fn prepare(
         }
         _ => return Err(RejectReason::Unsupported),
     };
-    Ok((address, prepared))
+    Ok(prepared)
 }
 
-/// Signs an approved request with `signer`.
-pub fn sign(signer: &PrivateKeySigner, prepared: Prepared) -> SignResponse {
+/// Signs an approved request with `signer` (interim shape until PLAN.md step 4.1).
+pub fn sign(signer: &PrivateKeySigner, prepared: Prepared, chain: u64) -> SignResponse {
     let sig = signer
         .sign_hash_sync(&prepared.hash())
         .expect("local signing does not fail");
+    let account = caip::account(chain, signer.address());
     match prepared {
         Prepared::Tx(tx) => {
-            // For transactions, `v` is the y-parity (typed) or the EIP-155 value (legacy);
-            // the r‖s‖v field carries the parity form, and signed_tx the canonical encoding.
-            let mut rsv = [0u8; 65];
-            rsv[..64].copy_from_slice(&sig.as_bytes()[..64]);
-            rsv[64] = sig.v() as u8;
-            SignResponse::Approved {
-                signature: to_hex(rsv),
-                signed_tx: Some(to_hex(tx.encode_signed(sig))),
+            let raw = tx.encode_signed(sig);
+            SignResponse::SignedTx {
+                account,
+                tx_hash: to_hex(alloy_primitives::keccak256(&raw)),
+                raw: to_hex(raw),
             }
         }
-        _ => SignResponse::Approved {
+        _ => SignResponse::Signed {
+            account,
             signature: to_hex(sig.as_bytes()),
-            signed_tx: None,
         },
     }
 }
