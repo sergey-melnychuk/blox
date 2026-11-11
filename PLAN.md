@@ -118,7 +118,7 @@ listed below while they exist.
 
 ## M5 — Android
 
-### 5.1 `blox-ffi` for the connection protocol  `[ ]`
+### 5.1 `blox-ffi` for the connection protocol  `[x]`
 - Back in the workspace. UniFFI API for the app: transport keys, offer parsing, accept and
   bound, inbox dispatch, request preparation and filling through a `ChainRpc` foreign trait,
   signing and sending, stored answers, relay request signatures, mnemonic helpers. Rust tests
@@ -254,3 +254,17 @@ listed below while they exist.
   connection without a QR, and disconnected. `tests/qr_size.rs` pins the QR size: version 8
   for a typical offer, at most version 10. `RUN.md` is rewritten (without a phone; with the
   app, marked as pending 5.2). M4 is complete.
+- **5.1:** The FFI is sans-IO: Kotlin does storage and HTTP, Rust everything else. API:
+  `generate_transport_keys`, `sign_relay_request` (Authorization header), `parse_offer`,
+  `normalize_relay_url`, `relay_host`; `Inbox` per (relay, signer) built from the transport
+  secrets and stored `ConnectionRecord`s, with `accept_offer` (needs the unlocked mnemonic;
+  returns the `bind` to post with the ticket), `abandon_connect` (the half-signed token to
+  revoke), `on_envelope` → `Incoming::{Connected, Request, Redelivered, Cancelled, Unbound,
+  Dropped}`, `answer`, `unbind`; `IncomingRequest::review(label, endpoint, host,
+  last_sent_nonce, now)` → `ReviewOutcome::{Ready, Reject, WouldFail, Unreachable}`;
+  `ReviewedRequest::approve(mnemonic, index)` → `ApproveOutcome::{Answer, Broadcast {…,
+  if_interrupted}}`; `broadcast_transaction`; `EndpointRpc` is a UniFFI foreign trait
+  (`call(method, params_json) → result_json`, errors `Unreachable`/`Rpc`). Redeliveries are
+  recognised by envelope digest within a process; after an app restart the app finds the
+  stored answer by request id. Kotlin bindings generate (4.6k lines) with the UniFFI CLI.
+  The workspace has no exclusions any more.

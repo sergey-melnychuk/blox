@@ -17,9 +17,9 @@ bip39 = { version = "2", features = ["zeroize"] }
 blox-evm = { version = "0.1.0", path = "../blox-evm" }
 blox-proto = { version = "0.1.0", path = "../blox-proto" }
 getrandom = "0.4.3"
+serde_json = "1.0.151"
+sha2 = "0.11.0"
 thiserror = "2.0.21"
 uniffi = { version = "0.32", features = ["cli"] }
 zeroize = "1.9.0"
 
-[dev-dependencies]
-serde_json = "1.0.151"

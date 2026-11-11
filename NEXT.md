@@ -5,26 +5,25 @@ transaction); sites and apps connect to one signer once with a QR code and then 
 through the relay, which authorizes writes with connection tokens and keeps messages 5 minutes.
 The JSON-RPC adapter (`blox rpc`) is retired. See BLOX.md §16.
 
-**Done so far:** protocol, relay, session handling (M1); the JSON-RPC adapter (M2, now retired);
-Android key storage, scanning and the session screen (part of the old M3). `RUN.md` and
-`android/README.md` still describe the retired `cast` flow until M3–M5 replace it.
+**Done so far:** M1, M2 (retired), M3 and M4, and the Rust side of
+M5 (`blox-ffi`). Step-by-step status and implementation notes: PLAN.md.
 
 ## M3: connections (Rust)
 
-- [ ] `blox-proto`: Ed25519 connection tokens (§4.3), request signatures (§4.4), the new envelope with `bind` / `message` (§4.5), the QR payload with ticket and PSK (§5.1), the connection statement with its exact format (§5.2), relay URL normalization (§4.3); test vectors with fixed ephemeral keys
-- [ ] `blox-relay`: inboxes keyed by Ed25519 keys, several readers per inbox, signed reads and acks, token-checked writes, tickets, revocation, TTL 5 min, the §8.4 limits (incl. 4 queued per writer), CORS; `{ "error": code }` bodies and `now` in `/v1/info` (§8.2); logging rules for the new headers
-- [ ] `blox-client`: `Requester::connect`, a connection store (file by default), `disconnect`, `verify_connection`, relay time (§4.8)
-- [ ] `blox-mock-keystore`: signers with transport keys, connect (revoke on missing `bound`), connection list, disconnect
-- [ ] Gates: §13.2 relay and connection checks, §13.3
-- [ ] Remove `blox-adapter` and `blox-cli`
+- [x] `blox-proto`: Ed25519 connection tokens (§4.3), request signatures (§4.4), the new envelope with `bind` / `message` (§4.5), the QR payload with ticket and PSK (§5.1), the connection statement with its exact format (§5.2), relay URL normalization (§4.3); test vectors with fixed ephemeral keys
+- [x] `blox-relay`: inboxes keyed by Ed25519 keys, several readers per inbox, signed reads and acks, token-checked writes, tickets, revocation, TTL 5 min, the §8.4 limits (incl. 4 queued per writer), CORS; `{ "error": code }` bodies and `now` in `/v1/info` (§8.2); logging rules for the new headers
+- [x] `blox-client`: `Requester::connect`, a connection store (file by default), `disconnect`, `verify_connection`, relay time (§4.8)
+- [x] `blox-mock-keystore`: signers with transport keys, connect (revoke on missing `bound`), connection list, disconnect
+- [x] Gates: §13.2 relay and connection checks, §13.3
+- [x] Remove `blox-adapter` and `blox-cli`
 
 ## M4: requests (Rust)
 
-- [ ] Messages (§6): `evm.send`, `evm.sign_tx`, `cancel`, `sent` / `signed_tx` / `signed` / `failed` / `rejected`, reasons `no_endpoint` and `would_fail`
-- [ ] `blox-evm`: build the transaction from intent plus endpoint data (reuse `TxRequest` / `Fill` from `rpc.rs`), the estimate-gas check, display updates
-- [ ] `blox-client`: `send`, `sign_transaction`, `personal_sign`, `sign_typed_data` with the §9.5 checks
-- [ ] Mock keystore with an anvil endpoint and two signers; acknowledge requests only once answered, store answers for redelivery (§10.6, §10.8); port the anvil tests to the §13.1 gates
-- [ ] Rewrite `RUN.md`
+- [x] Messages (§6): `evm.send`, `evm.sign_tx`, `cancel`, `sent` / `signed_tx` / `signed` / `failed` / `rejected`, reasons `no_endpoint` and `would_fail`
+- [x] `blox-evm`: build the transaction from intent plus endpoint data (reuse `TxRequest` / `Fill` from `rpc.rs`), the estimate-gas check, display updates
+- [x] `blox-client`: `send`, `sign_transaction`, `personal_sign`, `sign_typed_data` with the §9.5 checks
+- [x] Mock keystore with an anvil endpoint and two signers; acknowledge requests only once answered, store answers for redelivery (§10.6, §10.8); port the anvil tests to the §13.1 gates
+- [x] Rewrite `RUN.md`
 
 ## M5: Android
 
@@ -33,7 +32,7 @@ Android key storage, scanning and the session screen (part of the old M3). `RUN.
 - [ ] Connect screen (signer picker, remember-for, biometric, statement signature); connection list per signer with disconnect
 - [ ] Reading inboxes in the foreground; requests grouped by connection, cancelled and duplicate-looking requests; stored answers for redelivered requests (§10.6)
 - [ ] Settings: chain endpoints (checked with `eth_chainId`), relay list with the consent prompt
-- [ ] `ChainRpc` foreign trait over OkHttp; filling and sending in Rust
+- [~] `ChainRpc` foreign trait (Rust side done in `blox-ffi`; OkHttp implementation in the app); filling and sending in Rust
 - [ ] Review screen: filled fields, endpoint host, would-fail and no-endpoint states, "Sent · hash" / "Returned to the site"
 - [ ] Carried over: on-device checks (§13.4), audit log, the recovery phrase held as a `String` in Compose state
 
