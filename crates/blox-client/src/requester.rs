@@ -27,6 +27,8 @@ pub struct Config {
     pub name: String,
     /// How long to wait for the QR code to be answered.
     pub connect_timeout: Duration,
+    /// Shown on the phone with the name, as a claim (§6.2).
+    pub origin_url: Option<String>,
     /// Test hook: pretend the local clock is this many seconds off (§4.8).
     pub local_clock_skew: i64,
 }
@@ -37,6 +39,7 @@ impl Config {
             relay: relay.to_owned(),
             name: name.to_owned(),
             connect_timeout: Duration::from_secs(120),
+            origin_url: None,
             local_clock_skew: 0,
         }
     }
@@ -81,6 +84,13 @@ impl Requester {
 
     pub fn relay(&self) -> &RelayClient {
         &self.relay
+    }
+
+    pub(crate) fn origin(&self) -> Option<blox_proto::message::Origin> {
+        Some(blox_proto::message::Origin {
+            name: Some(self.config.name.clone()),
+            url: self.config.origin_url.clone(),
+        })
     }
 
     /// The connected account, if any (checksummed).

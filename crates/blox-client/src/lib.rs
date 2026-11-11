@@ -1,15 +1,18 @@
 //! Rust requester for Blox (BLOX.md §9): connects to a phone keystore once with a QR code,
 //! keeps the connection, and sends signing requests through the relay.
 
+mod calls;
 mod relay;
 mod requester;
 mod store;
 
+pub use calls::{MessageSignature, Sent, SignedTx, TxCall};
 pub use relay::{Delivery, RelayClient, Subscription, WriteAuth};
 pub use requester::{Config, MAX_REQUEST_SECS, QrCallback, Requester, verify_connection};
 pub use store::{ConnectionStore, FileStore, MemoryStore, StoredConnection};
 
 use blox_proto::api::ErrorCode;
+use blox_proto::message::RejectReason;
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
@@ -29,6 +32,15 @@ pub enum Error {
     Disconnected,
     #[error("cancelled")]
     Cancelled,
+    /// The phone refused the request (§6.4).
+    #[error("rejected: {0:?}")]
+    Rejected(RejectReason),
+    /// Signed, but the endpoint refused it or didn't answer; look the hash up.
+    #[error("failed ({tx_hash}): {error}")]
+    Failed {
+        tx_hash: blox_evm::B256,
+        error: String,
+    },
     /// A response failed the checks of §9.5.
     #[error("bad response: {0}")]
     BadResponse(String),

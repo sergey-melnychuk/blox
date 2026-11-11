@@ -11,6 +11,9 @@ use crate::{Error, Result, caip, hex_bytes};
 
 /// Checks `resp` against the request that produced it and the connection's account.
 pub fn check(req: &SignRequest, resp: &SignResponse, account: Address) -> Result<()> {
+    if matches!(resp, SignResponse::Rejected { .. }) {
+        return Ok(()); // nothing was signed; nothing to check
+    }
     let (chain_id, intent) = intent::decode_intent(req)
         .map_err(|_| Error::Verification("request is not well formed"))?;
     let expected = caip::account(chain_id, account);

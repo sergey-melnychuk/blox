@@ -37,7 +37,8 @@ impl Error {
 
 pub type Result<T> = std::result::Result<T, Error>;
 
-pub(crate) fn hex_bytes(s: &str) -> Result<Vec<u8>> {
+/// Decodes `0x`-prefixed hex.
+pub fn hex_bytes(s: &str) -> Result<Vec<u8>> {
     let h = s
         .strip_prefix("0x")
         .ok_or_else(|| Error::Malformed("hex without 0x".into()))?;

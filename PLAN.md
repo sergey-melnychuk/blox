@@ -98,7 +98,7 @@ listed below while they exist.
   the requester-side checks of §9.5 (replacing the adapter-era `verify.rs`).
 - Display: signer, endpoint host ("Sent via" / "Returned to the site").
 
-### 4.2 Requester calls  `[ ]`
+### 4.2 Requester calls  `[x]`
 - `send`, `sign_transaction`, `personal_sign`, `sign_typed_data` on `Requester`, with the §9.5
   checks and `bad_response`.
 
@@ -228,3 +228,10 @@ listed below while they exist.
   replaced by the filler. A JSON-RPC error from `eth_estimateGas` is `would_fail`; any other
   failure is "unreachable" (Retry/Reject). The priority-fee fallback is taken only on a
   JSON-RPC error, not on a network error.
+- **4.2:** `Requester::{send, sign_transaction, personal_sign, sign_typed_data}` take a
+  `TxCall` (chain id, `to`, value, data) or a message, run `blox_evm::check::check` on the
+  answer (a failed check is `BadResponse`), and turn `rejected` / `failed` into
+  `Error::Rejected(reason)` / `Error::Failed { tx_hash, error }`. `check` accepts a
+  `rejected` answer before decoding the request, so a request the phone refused as
+  malformed reports the phone's reason. Requests carry `origin { name, url }` from
+  `Config` (`origin_url` is new). Mock handlers get the message `ts` and relay `now`.

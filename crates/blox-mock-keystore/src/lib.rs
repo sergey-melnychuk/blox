@@ -49,6 +49,9 @@ pub struct RequestCtx {
     pub signer: Arc<Signer>,
     pub connection_label: String,
     pub id: MsgId,
+    /// The message's `ts` and the keystore's (relay) time.
+    pub ts: u64,
+    pub now: u64,
     pub request: SignRequest,
 }
 
@@ -414,6 +417,8 @@ impl MockKeystore {
                     signer: self.0.signers[signer].clone(),
                     connection_label: label,
                     id: msg.id,
+                    ts: msg.ts,
+                    now,
                     request,
                 };
                 let Some(resp) = (self.0.handler)(ctx).await else {
