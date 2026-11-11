@@ -51,28 +51,36 @@ async fn anvil(extra: &[&str]) -> Option<Anvil> {
         eprintln!("skipping: anvil not found (install Foundry or set ANVIL)");
         return None;
     };
-    let port = std::net::TcpListener::bind("localhost:0")
-        .unwrap()
-        .local_addr()
-        .unwrap()
-        .port();
-    let child = Command::new(bin)
-        .args(["--port", &port.to_string(), "--silent"])
-        .args(extra)
-        .stdout(Stdio::null())
-        .stderr(Stdio::null())
-        .spawn()
-        .expect("start anvil");
-    let a = Anvil {
-        child,
-        url: format!("http://localhost:{port}"),
-    };
-    let rpc = HttpRpc::new(&a.url);
-    for _ in 0..100 {
-        if rpc.call_async("eth_chainId", json!([])).await.is_ok() {
-            return Some(a);
+    // The free port is released before anvil binds it, and the tests' relay clients open a
+    // fresh connection (an ephemeral port) per call, so the port can be taken in between:
+    // anvil then exits, and we start it again on another port.
+    for _ in 0..5 {
+        let port = std::net::TcpListener::bind("localhost:0")
+            .unwrap()
+            .local_addr()
+            .unwrap()
+            .port();
+        let child = Command::new(&bin)
+            .args(["--port", &port.to_string(), "--silent"])
+            .args(extra)
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .spawn()
+            .expect("start anvil");
+        let mut a = Anvil {
+            child,
+            url: format!("http://localhost:{port}"),
+        };
+        let rpc = HttpRpc::new(&a.url);
+        for _ in 0..100 {
+            if rpc.call_async("eth_chainId", json!([])).await.is_ok() {
+                return Some(a);
+            }
+            if a.child.try_wait().ok().flatten().is_some() {
+                break;
+            }
+            tokio::time::sleep(Duration::from_millis(100)).await;
         }
-        tokio::time::sleep(Duration::from_millis(100)).await;
     }
     panic!("anvil did not start");
 }

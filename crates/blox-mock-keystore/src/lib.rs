@@ -354,7 +354,8 @@ impl MockKeystore {
         }
     }
 
-    /// Starts reading every inbox that has connections (the app was opened).
+    /// Starts reading every inbox that has connections, or a connect waiting for `bound`
+    /// (the app was opened).
     pub fn go_online(&self) {
         self.0.online.store(true, Ordering::SeqCst);
         let wanted: HashSet<(String, usize)> = {
@@ -362,6 +363,7 @@ impl MockKeystore {
             st.connections
                 .values()
                 .map(|e| (e.conn.relay().to_owned(), e.signer))
+                .chain(st.pending.values().map(|p| (p.relay.clone(), p.signer)))
                 .collect()
         };
         for (relay, signer) in wanted {

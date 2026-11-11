@@ -106,6 +106,15 @@ async fn eventually(what: &str, f: impl Fn() -> bool) {
     panic!("timed out waiting for {what}");
 }
 
+/// `connect()` returns once the requester has posted `bound`; the keystore records the
+/// connection when its reader handles it, a moment later.
+async fn recorded(ks: &MockKeystore, n: usize) {
+    eventually("the keystore to record the connection", || {
+        ks.connections().len() == n
+    })
+    .await;
+}
+
 #[tokio::test]
 async fn connect_request_and_restart_from_the_store() {
     let base = relay().await;
@@ -113,6 +122,7 @@ async fn connect_request_and_restart_from_the_store() {
     let store = MemoryStore::default();
     let r = requester(&base, &store, &ks, 0);
     assert_eq!(r.connect().await.unwrap(), ks.signer(0).address());
+    recorded(&ks, 1).await;
     assert_eq!(ks.connections().len(), 1);
     assert_eq!(ks.connections()[0].label, "Example");
     let resp = r.request(req("hello")).await.unwrap();
@@ -221,6 +231,7 @@ async fn disconnect_from_the_keystore() {
     let store = MemoryStore::default();
     let r = requester(&base, &store, &ks, 0);
     r.connect().await.unwrap();
+    recorded(&ks, 1).await;
     let id = ks.connections()[0].id;
     ks.disconnect(&id).await.unwrap();
     assert!(matches!(

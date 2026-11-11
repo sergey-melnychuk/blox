@@ -360,6 +360,18 @@ listed below while they exist.
      opens a fresh connection per call (`pool_max_idle_per_host(0)`, 10 s connect timeout) and
      gives every non-streaming call a 30 s timeout. Afterwards: 25/25 clean runs. Revisit
      pooling with newer hyper-util (a TLS handshake per relay call costs some latency).
+- **Fix (test races):** three connection tests failed (one hung 300 s), and one
+  anvil test now and then said "anvil did not start":
+  1. `connect()` returns once the requester has posted `bound`; the mock records the
+     connection when its reader handles it, a moment later. Tests that read
+     `ks.connections()` right after connecting now wait for it (`recorded`).
+  2. `go_offline()` right after connecting could stop the reader before it handled `bound`,
+     and `go_online()` restarted readers only for recorded connections. It now also restarts
+     them for connects waiting for `bound` (as the app keeps reading while it waits).
+  3. The anvil harness picks a free port and releases it before anvil binds it; with a
+     fresh relay connection per call, the port can be taken in between and anvil exits.
+     The harness now starts anvil again on a new port.
+  Afterwards: 25/25 clean runs of `blox-mock-keystore`.
 
 ## Picking this up on another machine
 
