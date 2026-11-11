@@ -345,6 +345,18 @@ listed below while they exist.
   (pulling and running base images wasn't attempted). Deploying `relay.example.com`, the release
   key and signed reproducible APKs remain the user's.
 
+- **Fix after 7.1 (flaky anvil tests):** about one run in five hung for the full 300 s
+  request timeout. Two causes, both found with tracing:
+  1. *Mock keystore race:* the reader handled `bound` but `accept()` added the connection
+     later, on another task; a request right behind `bound` was dropped as "not from a live
+     connection". The reader now adds the connection itself (as `blox-ffi`'s `Inbox` already
+     did).
+  2. *Relay client:* with reqwest 0.13.5 / hyper-util 0.1.20 connection reuse, a request now
+     and then never reached the relay (the relay saw 47 of 48 `DELETE`s). `RelayClient` now
+     opens a fresh connection per call (`pool_max_idle_per_host(0)`, 10 s connect timeout) and
+     gives every non-streaming call a 30 s timeout. Afterwards: 25/25 clean runs. Revisit
+     pooling with newer hyper-util (a TLS handshake per relay call costs some latency).
+
 ## Picking this up on another machine
 
 1. **Rust:** `cargo test --workspace` (the anvil tests need Foundry; `foundryup -i v1.8.3` was

@@ -112,7 +112,8 @@ struct Entry {
 struct Pending {
     signer: usize,
     pending: PendingConnection,
-    done: oneshot::Sender<Connection>,
+    relay: String,
+    done: oneshot::Sender<ConnectionInfo>,
 }
 
 #[derive(Default)]
@@ -257,13 +258,12 @@ impl MockKeystore {
         )?;
         let (done, wait) = oneshot::channel();
         let half = acc.pending.token().clone();
-        let label = acc.pending.label.clone();
-        let account = acc.pending.account.clone();
         self.0.state.lock().unwrap().pending.insert(
             acc.pending.requester_kem().0,
             Pending {
                 signer,
                 pending: acc.pending,
+                relay: offer.relay.clone(),
                 done,
             },
         );
@@ -283,27 +283,10 @@ impl MockKeystore {
                 .remove(&half.body.requester.kem.0);
             return Err(e);
         }
+        // The reader adds the connection when `bound` arrives (so a request right behind it
+        // is recognised); this only waits for that.
         match tokio::time::timeout(self.0.options.bound_timeout, wait).await {
-            Ok(Ok(conn)) => {
-                let info = ConnectionInfo {
-                    id: conn.id(),
-                    label: label.clone(),
-                    account: account.clone(),
-                    signer,
-                    relay: offer.relay.clone(),
-                    expires_at: conn.expires_at(),
-                };
-                self.0.state.lock().unwrap().connections.insert(
-                    conn.id(),
-                    Entry {
-                        signer,
-                        conn,
-                        label,
-                        account,
-                    },
-                );
-                Ok(info)
-            }
+            Ok(Ok(info)) => Ok(info),
             _ => {
                 self.0
                     .state
@@ -421,13 +404,31 @@ impl MockKeystore {
         let Ok(env) = Envelope::parse(bytes) else {
             return true;
         };
-        // A `bound` for a pending connect?
+        // A `bound` for a pending connect? The connection is live from here on, before the
+        // next delivery is handled (a request can follow `bound` immediately).
         let pending = self.0.state.lock().unwrap().pending.remove(&env.spk.0);
         if let Some(p) = pending {
             if p.signer == signer
                 && let Ok(conn) = p.pending.open_bound(bytes, now)
             {
-                let _ = p.done.send(conn);
+                let info = ConnectionInfo {
+                    id: conn.id(),
+                    label: p.pending.label.clone(),
+                    account: p.pending.account.clone(),
+                    signer,
+                    relay: p.relay.clone(),
+                    expires_at: conn.expires_at(),
+                };
+                self.0.state.lock().unwrap().connections.insert(
+                    conn.id(),
+                    Entry {
+                        signer,
+                        conn,
+                        label: p.pending.label.clone(),
+                        account: p.pending.account.clone(),
+                    },
+                );
+                let _ = p.done.send(info);
             }
             return true;
         }

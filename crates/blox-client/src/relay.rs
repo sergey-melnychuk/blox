@@ -15,6 +15,9 @@ use tokio::sync::mpsc;
 
 use crate::{Error, Result};
 
+/// Longest wait for a relay call other than a read stream.
+const CALL_TIMEOUT: Duration = Duration::from_secs(30);
+
 /// How a write is authorized (§2.2).
 pub enum WriteAuth<'a> {
     /// A token the recipient signed, with the request signed by the other party.
@@ -77,7 +80,14 @@ impl RelayClient {
     pub fn new(base: &str) -> Self {
         Self {
             base: base.trim_end_matches('/').to_owned(),
-            http: reqwest::Client::new(),
+            // A fresh connection per request: with connection reuse (reqwest 0.13.5,
+            // hyper-util 0.1.20), a request occasionally never reached the relay and hung —
+            // about one in five runs of the anvil tests. Relay calls are few per request.
+            http: reqwest::Client::builder()
+                .pool_max_idle_per_host(0)
+                .connect_timeout(Duration::from_secs(10))
+                .build()
+                .expect("http client"),
             offset: Arc::default(),
             synced: Arc::default(),
             local_skew: 0,
@@ -143,6 +153,10 @@ impl RelayClient {
                 .http
                 .request(method.clone(), format!("{}{path}", self.base))
                 .body(body.clone());
+            // Reads are long-lived streams; everything else must answer promptly.
+            if method != Method::GET {
+                req = req.timeout(CALL_TIMEOUT);
+            }
             if let Some(k) = signer {
                 let auth = reqsig::sign(k, method.as_str(), path, self.now(), &body);
                 req = req.header("authorization", auth);
