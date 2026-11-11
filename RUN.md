@@ -22,6 +22,16 @@ BLOX_LISTEN=localhost:8080 cargo run -p blox-relay
 cargo run -p blox-mock-keystore -- --endpoint 31337=http://localhost:8545
 ```
 
+Or start all three with one command (release builds; logs in `target/local`; Ctrl-C stops
+them all):
+
+```sh
+scripts/local-services.sh
+```
+
+It reads the mock keystore's input from `target/local/keystore.in`: give it a QR string with
+`echo 'BLOX:…' > target/local/keystore.in`, and read its answers in `target/local/keystore.log`.
+
 The mock keystore prints its signers and then waits for `BLOX:` lines on its input. Now
 connect and send with the example requester. `--print-uri` prints the QR string instead of
 drawing it:
@@ -80,6 +90,12 @@ anvil --host any-address
 ```
 ```sh
 BLOX_LISTEN=:8080 cargo run -p blox-relay
+```
+
+Or both at once, without the mock keystore (the app is the keystore):
+
+```sh
+BLOX_HOST=any-address scripts/local-services.sh --no-keystore
 ```
 
 Debug builds of the app accept plain-HTTP relays and endpoints; release builds refuse them.

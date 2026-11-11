@@ -381,6 +381,12 @@ listed below while they exist.
   `"nodeModulesDir": "auto"` so `deno task test` works on a fresh checkout under Deno 2;
   `deno.lock` is now format v5 (same versions). `npm run build` (tsc 5.9) builds `dist/`
   with `.js` imports.
+- **Local services script:** `scripts/local-services.sh` starts anvil, the relay (plain HTTP)
+  and the mock keystore (or not, with `--no-keystore`, for the app), all release builds, and
+  stops them together. The keystore reads a FIFO the script holds open, so
+  `echo 'BLOX:…' > target/local/keystore.in` reaches it. A local run through it:
+  connect, send (mined), message signatures and a second send from the stored connection
+  (consecutive nonce, type 2, gas = estimate × 1.2), disconnect.
 
 ## Picking this up on another machine
 
