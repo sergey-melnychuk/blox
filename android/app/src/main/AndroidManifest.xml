@@ -8,8 +8,8 @@
 
     <uses-feature android:name="android.hardware.camera.any" android:required="true" />
 
-    <!-- No intent filters beyond the launcher: session QR payloads come only from the
-         in-app scanner, so no other app can intercept a PSK (BLOX.md §10.6). -->
+    <!-- No intent filters beyond the launcher: QR payloads come only from the in-app
+         scanner, so no other app can intercept a ticket or PSK (BLOX.md §10.7). -->
     <application
         android:name=".BloxApp"
         android:allowBackup="false"

@@ -19,7 +19,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -31,65 +34,70 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
-import uniffi.blox_ffi.PendingRequest
 import uniffi.blox_ffi.UiDisplay
 import wtf.oxff.blox.BloxApp
 import wtf.oxff.blox.MainActivity
-import wtf.oxff.blox.session.SessionController.Info
-import wtf.oxff.blox.session.SessionController.State
+import wtf.oxff.blox.keystore.Keystore.Pending
+import wtf.oxff.blox.keystore.Keystore.ReviewState
+import wtf.oxff.blox.keystore.describe
 import wtf.oxff.blox.vault.unlock
 
+/** One connection's requests, oldest first, one at a time (§10.5, §10.6). */
 @Composable
-fun SessionScreen(activity: MainActivity, app: BloxApp, state: State) {
-    Column(
-        Modifier.padding(24.dp).verticalScroll(rememberScrollState()),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
-    ) {
-        when (state) {
-            State.Idle -> {}
-            State.Joining -> Row(verticalAlignment = Alignment.CenterVertically) {
+fun ReviewScreen(activity: MainActivity, app: BloxApp, connectionId: String, onBack: () -> Unit) {
+    val all by app.keystore.pending.collectAsState()
+    val items = all.filter { it.connectionId == connectionId }
+    LaunchedEffect(items.isEmpty()) { if (items.isEmpty()) onBack() }
+    val p = items.firstOrNull() ?: return
+    val signer = app.vault.get(p.signerId)
+
+    Column(Modifier.padding(24.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        TextButton(onClick = onBack) { Text("‹ Back") }
+        Text(p.label, style = MaterialTheme.typography.titleLarge)
+        val origin = listOfNotNull(p.request.originName(), p.request.originUrl()).joinToString(" · ")
+        if (origin.isNotEmpty()) {
+            Text("Claims to be from: $origin", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline)
+        }
+        if (items.size > 1) {
+            Text(
+                "${p.label} sent ${items.size} requests. If you retried on the site, the older one may be a duplicate.",
+                color = MaterialTheme.colorScheme.tertiary,
+            )
+        }
+        when (val st = p.state) {
+            ReviewState.Loading -> Row(verticalAlignment = Alignment.CenterVertically) {
                 CircularProgressIndicator()
-                Text("  Joining…")
+                Text("  Preparing…")
             }
-            is State.Waiting -> {
-                Header(state.info)
-                Text("Waiting for a request from your computer…")
-                Button(onClick = { app.session.done() }, Modifier.fillMaxWidth()) { Text("Done") }
+            is ReviewState.Ready -> Ready(activity, app, p, st.display, signer?.label ?: "")
+            is ReviewState.WouldFail -> {
+                Text("This transaction would fail", style = MaterialTheme.typography.headlineSmall, color = MaterialTheme.colorScheme.error)
+                Text(st.message, fontFamily = FontFamily.Monospace, style = MaterialTheme.typography.bodySmall)
+                Button(onClick = { app.keystore.reject(p) }, Modifier.fillMaxWidth()) { Text("Reject") }
             }
-            is State.Reviewing -> {
-                Header(state.info)
-                Review(activity, app, state.request, state.display)
+            is ReviewState.Unreachable -> {
+                Text("The network endpoint can't be reached", style = MaterialTheme.typography.titleMedium)
+                Text(st.message, style = MaterialTheme.typography.bodySmall)
+                Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                    OutlinedButton(onClick = { app.keystore.reject(p) }, Modifier.weight(1f)) { Text("Reject") }
+                    Button(onClick = { app.keystore.review(p) }, Modifier.weight(1f)) { Text("Retry") }
+                }
             }
-            is State.Ended -> {
-                Text(state.message, style = MaterialTheme.typography.titleMedium)
-                Button(onClick = { app.session.dismiss() }, Modifier.fillMaxWidth()) { Text("OK") }
-            }
+            ReviewState.Withdrawn -> Text("The site withdrew this request.", style = MaterialTheme.typography.titleMedium)
+            is ReviewState.Done -> Text(describe(st.response), style = MaterialTheme.typography.titleMedium)
         }
     }
 }
 
 @Composable
-private fun Header(info: Info) {
-    Text("Connected to ${info.label}", style = MaterialTheme.typography.titleLarge)
-    Text(
-        "${info.relayHost} · ${if (info.connected) "online" else "reconnecting…"} · " +
-            "${info.signed} signed · ${info.rejected} rejected",
-        style = MaterialTheme.typography.bodySmall,
-    )
-}
-
-@Composable
-private fun Review(activity: MainActivity, app: BloxApp, request: PendingRequest, display: UiDisplay) {
+private fun Ready(activity: MainActivity, app: BloxApp, p: Pending, display: UiDisplay, signerLabel: String) {
     val scope = rememberCoroutineScope()
-    var error by remember(request) { mutableStateOf<String?>(null) }
-    val typed = remember(request) { display.dangers.map { mutableStateOf("") } }
-    var acknowledged by remember(request) { mutableStateOf(false) }
+    var error by remember(p.requestId) { mutableStateOf<String?>(null) }
+    var busy by remember(p.requestId) { mutableStateOf(false) }
+    val typed = remember(p.requestId) { display.dangers.map { mutableStateOf("") } }
+    var acknowledged by remember(p.requestId) { mutableStateOf(false) }
 
     Text(display.title, style = MaterialTheme.typography.headlineSmall)
-    display.originClient?.let {
-        Text("Claims to be from: $it", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline)
-    }
-
     display.dangers.forEachIndexed { i, d ->
         Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -121,11 +129,7 @@ private fun Review(activity: MainActivity, app: BloxApp, request: PendingRequest
                 var expanded by remember(f) { mutableStateOf(false) }
                 Column(Modifier.clickable(enabled = f.full != null) { expanded = !expanded }) {
                     Text(f.label, style = MaterialTheme.typography.labelMedium)
-                    Text(
-                        if (expanded) f.full ?: f.value else f.value,
-                        fontFamily = FontFamily.Monospace,
-                        style = MaterialTheme.typography.bodyMedium,
-                    )
+                    Text(if (expanded) f.full ?: f.value else f.value, fontFamily = FontFamily.Monospace, style = MaterialTheme.typography.bodyMedium)
                 }
             }
         }
@@ -140,20 +144,23 @@ private fun Review(activity: MainActivity, app: BloxApp, request: PendingRequest
     val confirmed = display.dangers.withIndex().all { (i, d) -> d.confirm == null || typed[i].value.equals(d.confirm, ignoreCase = true) } &&
         (!needsAck || acknowledged)
     Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-        OutlinedButton(onClick = { app.session.reject(request) }, Modifier.weight(1f)) { Text("Reject") }
+        OutlinedButton(onClick = { app.keystore.reject(p) }, enabled = !busy, modifier = Modifier.weight(1f)) { Text("Reject") }
         Button(
-            enabled = confirmed,
+            enabled = confirmed && !busy,
             modifier = Modifier.weight(1f),
             onClick = {
                 scope.launch {
+                    busy = true
                     try {
-                        val cipher = activity.unlock(app.vault.decryptCipher(), "Approve ${display.title.lowercase()}")
+                        val cipher = activity.unlock(app.vault.decryptCipher(p.signerId), "Approve with $signerLabel", display.title)
                             ?: return@launch
-                        app.session.approve(request, app.vault.open(cipher))
+                        app.keystore.approve(p, app.vault.open(p.signerId, cipher))
                     } catch (e: KeyPermanentlyInvalidatedException) {
-                        error = "Your phone's security settings changed. Restore from your recovery phrase."
+                        error = "Your phone's security settings changed. Restore this signer from its recovery phrase."
                     } catch (e: Exception) {
-                        error = "Could not unlock the key: ${e.message}"
+                        error = "Could not sign: ${e.message}"
+                    } finally {
+                        busy = false
                     }
                 }
             },

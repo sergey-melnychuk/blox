@@ -124,7 +124,7 @@ listed below while they exist.
   signing and sending, stored answers, relay request signatures, mnemonic helpers. Rust tests
   drive it like the app would.
 
-### 5.2 Android app  `[!]`
+### 5.2 Android app  `[!]` written, not compiled
 - Multiple signers (one wrapping key each), transport keys, settings (endpoints, relays), connect
   screen, connection list, inbox reading, request queue and review screen, audit log.
 - **Written here but not compiled:** no Android SDK on this machine. Building and the §13.4
@@ -268,3 +268,27 @@ listed below while they exist.
   recognised by envelope digest within a process; after an app restart the app finds the
   stored answer by request id. Kotlin bindings generate (4.6k lines) with the UniFFI CLI.
   The workspace has no exclusions any more.
+- **5.2 (written, not compiled):** ~2,400 lines of Kotlin against the generated binding
+  signatures (checked by hand: names, `UInt`/`ULong`, sealed classes, suspend calls).
+  - `vault/SignerVault`: one wrapping key per signer (`blox.seed.wrap.v1.<id>`), transport
+    keys under `blox.transport.wrap.v1` (no authentication), restore for listed signers,
+    removal deletes the key first; migrates the earlier single seed as signer "Main".
+  - `store/Stores.kt`: `Settings` (endpoints, relays with the default always listed),
+    `Connections`, `Answers` (10 minutes, `commit()` so an answer is on disk before it is
+    sent or broadcast), `AuditLog` (JSON lines, exported as text through the share sheet —
+    not Room/SQLite as §10.9 suggests).
+  - `relay/RelayClient` (signed requests, relay time, retry after `clock`, ticket post),
+    `relay/HttpEndpoint` (`EndpointRpc` over OkHttp).
+  - `keystore/Keystore`: readers per (relay, signer) while in the foreground (closed 30 s
+    after going to the background), dispatch of `Incoming`, review/approve/broadcast with
+    the stored `if_interrupted` answer first, expiry, cancel, unbind, the connect flow
+    (relay consent → signer + remember-for → biometric → bind with ticket → wait for
+    `bound`, revoke after 120 s), disconnect, signer and relay removal.
+  - UI: home (requests grouped by connection, signers, Scan, status line), add signer
+    (backup check; import only in debug builds), connect, review (duplicate notice,
+    withdrawn, would-fail, Retry), signer (connections with Disconnect, view phrase,
+    restore, remove with typed confirmation), settings (endpoints checked with
+    `eth_chainId`, relays, audit export).
+  - **Not done here:** compiling (no Android SDK; running a downloaded `ktlint` for a syntax
+    check was not permitted), the §13.4 device checks, an instrumented test of the
+    bindings.

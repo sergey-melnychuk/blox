@@ -1,5 +1,9 @@
 # Blox keystore — Android
 
+> **Status:** the connections UI (PLAN.md step 5.2) was written on a machine without the
+> Android SDK and has not been compiled yet. Build it, fix what the compiler finds, and run
+> the §13.4 device checks.
+
 The phone-side keystore (BLOX.md §10). Kotlin + Jetpack Compose on top of the shared Rust
 core (`crates/blox-ffi`, UniFFI). The app does UI, the Android Keystore and networking;
 protocol handling, request checks, decoding for display and signing all run in Rust.
