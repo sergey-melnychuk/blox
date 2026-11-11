@@ -147,7 +147,7 @@ listed below while they exist.
   root with an embedded QR encoder.
 - Deno test with `@wagmi/core` against relay + mock keystore + anvil.
 
-### 6.4 Demo page  `[ ]`
+### 6.4 Demo page  `[x]` (browser checks `[!]`)
 - A static wagmi demo page.
 - **Browser checks** (IndexedDB non-extractable keys, Safari, the one-dependency Vite/Next.js
   check) `[!]`: need a browser and a phone.
@@ -334,3 +334,8 @@ listed below while they exist.
   the caller's nonce/gas replaced by the phone's, signs a message and typed data, switches
   chain (4901 without an endpoint), reconnects a new config from storage without a QR, and
   disconnects. **Not exercised here:** the modal and toast DOM (no browser).
+- **6.4:** `sdk/js/demo`: a Vite + wagmi page (connect, send, sign message, typed data,
+  switch chain, disconnect) with the connector as the one added line; Vite aliases
+  `@blox/sdk` to the SDK source, so no build step is needed. `?mock` prints the QR string for
+  the mock keystore. Type-checked with Deno against wagmi 3.6.9 / viem 2.57.17; not run
+  (no Node or browser here). Packaging (`npm run build` with `tsc`) is also untested here.
