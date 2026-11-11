@@ -88,7 +88,7 @@ listed below while they exist.
 
 ## M4 — requests (Rust)
 
-### 4.1 `blox-evm`: intent, filling, signing, checks  `[ ]`
+### 4.1 `blox-evm`: intent, filling, signing, checks  `[x]`
 - Strict decoding of `evm.send` / `evm.sign_tx` payloads (no extra fields), `personal_sign`,
   `typed_data`; refusals of §6.3.
 - `ChainRpc` trait (synchronous, JSON in and out, so UniFFI can expose it as a foreign trait)
@@ -216,3 +216,15 @@ listed below while they exist.
   a second valid `bind` (`contested`), which needs a misbehaving relay — the honest relay's
   single-use ticket makes it impossible; the client's check is a few lines in `connect_new`.
   **Workspace exclusions now:** `blox-ffi` (until 5.1).
+- **4.1:** Modules: `intent` (strict payload decoding; `to` must be present, `null` deploys),
+  `rpc` (`ChainRpc` trait: method + JSON params → JSON result, errors split into
+  `Unreachable` and JSON-RPC `Rpc`), `fill` (§10.4; the filler also checks `eth_chainId`
+  against the request's chain, so a mis-configured endpoint can't fill for another chain),
+  `sign` (`Prepared::Tx { broadcast }`), `keystore` (review → approve → broadcast, with
+  `Approved::Broadcast` returning raw + hash so the caller records them before sending,
+  §10.8), `check` (§9.5 requester checks, replacing the adapter-era `verify.rs`), `display`
+  (signer "label · address", "Sent via" / "Filled from … (returned to the site, not sent)",
+  fill warnings). The JSON-RPC `TxRequest` builder from the adapter era is gone; `Fill` was
+  replaced by the filler. A JSON-RPC error from `eth_estimateGas` is `would_fail`; any other
+  failure is "unreachable" (Retry/Reject). The priority-fee fallback is taken only on a
+  JSON-RPC error, not on a network error.

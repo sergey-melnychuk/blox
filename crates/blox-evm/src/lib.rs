@@ -2,8 +2,12 @@
 //! requester-side checks (BLOX.md §6.3, §9.5, §10.4).
 
 pub mod caip;
+pub mod check;
 pub mod connect;
 pub mod display;
+pub mod fill;
+pub mod intent;
+pub mod keystore;
 pub mod rpc;
 pub mod sign;
 pub mod tx;
@@ -11,9 +15,7 @@ pub mod tx;
 pub use alloy_primitives::{Address, B256, U256};
 pub use alloy_signer_local::PrivateKeySigner;
 
-pub const KIND_TX: &str = "evm.tx";
-pub const KIND_TYPED_DATA: &str = "evm.typed_data";
-pub const KIND_PERSONAL_SIGN: &str = "evm.personal_sign";
+pub use intent::{KIND_PERSONAL_SIGN, KIND_SEND, KIND_SIGN_TX, KIND_TYPED_DATA};
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {

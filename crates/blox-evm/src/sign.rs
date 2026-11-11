@@ -1,93 +1,64 @@
-//! Keystore side (§10.4, §10.7): check a request, then sign it after approval.
+//! Signing what the user approved (BLOX.md §10.8).
 
 use alloy_dyn_abi::TypedData;
-use alloy_primitives::{B256, U256, eip191_hash_message};
+use alloy_primitives::{B256, eip191_hash_message, keccak256};
 use alloy_signer::SignerSync;
 use alloy_signer_local::{MnemonicBuilder, PrivateKeySigner, coins_bip39::English};
-use blox_proto::message::{RejectReason, SignRequest, SignResponse};
 
+use crate::to_hex;
 use crate::tx::UnsignedTx;
-use crate::{KIND_PERSONAL_SIGN, KIND_TX, KIND_TYPED_DATA, caip, hex_bytes, to_hex};
 
-/// A request that passed every check and may be shown for approval.
-#[derive(Clone, Debug)]
+/// A request that passed every check and was filled; exactly what is shown and signed.
+#[derive(Clone, Debug, PartialEq)]
 pub enum Prepared {
-    Tx(UnsignedTx),
+    /// `broadcast` is true for `evm.send`, false for `evm.sign_tx`.
+    Tx {
+        tx: UnsignedTx,
+        broadcast: bool,
+    },
     TypedData(Box<TypedData>),
     PersonalSign(Vec<u8>),
 }
 
 impl Prepared {
-    fn hash(&self) -> B256 {
+    pub fn hash(&self) -> B256 {
         match self {
-            Prepared::Tx(tx) => tx.signature_hash(),
-            Prepared::TypedData(td) => td.eip712_signing_hash().expect("checked in prepare"),
+            Prepared::Tx { tx, .. } => tx.signature_hash(),
+            Prepared::TypedData(td) => td.eip712_signing_hash().expect("checked when decoded"),
             Prepared::PersonalSign(m) => eip191_hash_message(m),
         }
     }
 }
 
-/// Checks a request for the connection's account (§10.4). On failure, the returned
-/// reason goes back to the requester as `rejected`.
-pub fn prepare(req: &SignRequest, now: u64) -> Result<Prepared, RejectReason> {
-    if req.expires_at < now {
-        return Err(RejectReason::Expired);
-    }
-    let chain = caip::parse_chain(&req.chain).map_err(|_| RejectReason::Unsupported)?;
-    let field = |name: &str| req.payload.get(name).ok_or(RejectReason::DecodeFailed);
-    let prepared = match req.kind.as_str() {
-        KIND_TX => {
-            let hex = field("tx")?.as_str().ok_or(RejectReason::DecodeFailed)?;
-            let bytes = hex_bytes(hex).map_err(|_| RejectReason::DecodeFailed)?;
-            let tx = UnsignedTx::decode(&bytes).map_err(|e| match e {
-                crate::Error::Unsupported(_) => RejectReason::Unsupported,
-                _ => RejectReason::DecodeFailed,
-            })?;
-            if tx.chain_id() != chain {
-                return Err(RejectReason::DecodeFailed);
-            }
-            Prepared::Tx(tx)
-        }
-        KIND_TYPED_DATA => {
-            let td: TypedData = serde_json::from_value(field("data")?.clone())
-                .map_err(|_| RejectReason::DecodeFailed)?;
-            if td.domain.chain_id.is_some_and(|c| c != U256::from(chain)) {
-                return Err(RejectReason::DecodeFailed);
-            }
-            td.eip712_signing_hash()
-                .map_err(|_| RejectReason::DecodeFailed)?;
-            Prepared::TypedData(Box::new(td))
-        }
-        KIND_PERSONAL_SIGN => {
-            let hex = field("message")?
-                .as_str()
-                .ok_or(RejectReason::DecodeFailed)?;
-            Prepared::PersonalSign(hex_bytes(hex).map_err(|_| RejectReason::DecodeFailed)?)
-        }
-        _ => return Err(RejectReason::Unsupported),
-    };
-    Ok(prepared)
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum Signed {
+    /// A signed transaction (EIP-2718 encoding) and its hash.
+    Tx {
+        raw: Vec<u8>,
+        hash: B256,
+        nonce: u64,
+        broadcast: bool,
+    },
+    /// `0x` + r‖s‖v, v = 27 or 28.
+    Message(String),
 }
 
-/// Signs an approved request with `signer` (interim shape until PLAN.md step 4.1).
-pub fn sign(signer: &PrivateKeySigner, prepared: Prepared, chain: u64) -> SignResponse {
+/// Signs with RFC 6979 deterministic, low-s ECDSA.
+pub fn sign(signer: &PrivateKeySigner, prepared: &Prepared) -> Signed {
     let sig = signer
         .sign_hash_sync(&prepared.hash())
         .expect("local signing does not fail");
-    let account = caip::account(chain, signer.address());
     match prepared {
-        Prepared::Tx(tx) => {
-            let raw = tx.encode_signed(sig);
-            SignResponse::SignedTx {
-                account,
-                tx_hash: to_hex(alloy_primitives::keccak256(&raw)),
-                raw: to_hex(raw),
+        Prepared::Tx { tx, broadcast } => {
+            let raw = tx.clone().encode_signed(sig);
+            Signed::Tx {
+                hash: keccak256(&raw),
+                raw,
+                nonce: tx.nonce(),
+                broadcast: *broadcast,
             }
         }
-        _ => SignResponse::Signed {
-            account,
-            signature: to_hex(sig.as_bytes()),
-        },
+        _ => Signed::Message(to_hex(sig.as_bytes())),
     }
 }
 
@@ -99,4 +70,23 @@ pub fn signer_from_mnemonic(phrase: &str, index: u32) -> crate::Result<PrivateKe
         .map_err(crate::Error::malformed)?
         .build()
         .map_err(crate::Error::malformed)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use alloy_primitives::address;
+
+    #[test]
+    fn anvil_account_zero() {
+        let s = signer_from_mnemonic(
+            "test test test test test test test test test test test junk",
+            0,
+        )
+        .unwrap();
+        assert_eq!(
+            s.address(),
+            address!("0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266")
+        );
+    }
 }

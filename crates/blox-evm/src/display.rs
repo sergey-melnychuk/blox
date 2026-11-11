@@ -58,12 +58,33 @@ pub fn chain_name(id: u64) -> Option<&'static str> {
     })
 }
 
-pub fn describe(prepared: &Prepared, from: Address) -> Display {
-    match prepared {
-        Prepared::Tx(tx) => describe_tx(tx, from),
-        Prepared::TypedData(td) => describe_typed(td, from),
-        Prepared::PersonalSign(m) => describe_message(m, from),
-    }
+/// What the review screen knows besides the request itself.
+pub struct DisplayCtx<'a> {
+    pub from: Address,
+    pub signer_label: &'a str,
+    /// The endpoint the transaction was filled from (and is sent through, for `evm.send`).
+    pub endpoint_host: Option<&'a str>,
+    /// Warnings from filling (e.g. the balance check).
+    pub warnings: Vec<String>,
+}
+
+pub fn describe(prepared: &Prepared, ctx: &DisplayCtx) -> Display {
+    let mut d = match prepared {
+        Prepared::Tx { tx, broadcast } => describe_tx(tx, ctx, *broadcast),
+        Prepared::TypedData(td) => describe_typed(td, ctx),
+        Prepared::PersonalSign(m) => describe_message(m, ctx),
+    };
+    d.warnings.extend(ctx.warnings.iter().cloned());
+    d
+}
+
+fn signer_field(ctx: &DisplayCtx) -> Field {
+    let value = if ctx.signer_label.is_empty() {
+        checksum(ctx.from)
+    } else {
+        format!("{} · {}", ctx.signer_label, checksum(ctx.from))
+    };
+    field("Signer", value)
 }
 
 fn field(label: &str, value: impl Into<String>) -> Field {
@@ -117,7 +138,7 @@ fn network(chain_id: u64, warnings: &mut Vec<String>) -> Field {
     }
 }
 
-fn describe_tx(tx: &UnsignedTx, from: Address) -> Display {
+fn describe_tx(tx: &UnsignedTx, ctx: &DisplayCtx, broadcast: bool) -> Display {
     let mut warnings = Vec::new();
     let mut dangers = Vec::new();
     let (to, value, input, gas, fees) = match tx {
@@ -143,10 +164,7 @@ fn describe_tx(tx: &UnsignedTx, from: Address) -> Display {
             Fees::Eip1559(t.max_fee_per_gas, t.max_priority_fee_per_gas),
         ),
     };
-    let mut fields = vec![
-        network(tx.chain_id(), &mut warnings),
-        field("From", checksum(from)),
-    ];
+    let mut fields = vec![network(tx.chain_id(), &mut warnings), signer_field(ctx)];
     match to {
         Some(to) => fields.push(field("To", checksum(to))),
         None => {
@@ -176,6 +194,16 @@ fn describe_tx(tx: &UnsignedTx, from: Address) -> Display {
         format!("{} ETH", format_units(max_cost, 18)),
     ));
     fields.push(field("Nonce", tx.nonce().to_string()));
+    if let Some(host) = ctx.endpoint_host {
+        if broadcast {
+            fields.push(field("Sent via", host));
+        } else {
+            fields.push(field(
+                "Filled from",
+                format!("{host} (returned to the site, not sent)"),
+            ));
+        }
+    }
     if !input.is_empty() {
         let full = format!("0x{}", hex::encode(input));
         let short = if input.len() > 10 {
@@ -195,7 +223,11 @@ fn describe_tx(tx: &UnsignedTx, from: Address) -> Display {
             .push("Unrecognised contract call. Check the data with the contract's source.".into());
     }
     Display {
-        title: "Transaction".into(),
+        title: if broadcast {
+            "Transaction".into()
+        } else {
+            "Sign transaction (returned to the site)".into()
+        },
         fields,
         decoded,
         dangers,
@@ -297,7 +329,7 @@ fn show(v: &DynSolValue) -> String {
     }
 }
 
-fn describe_typed(td: &TypedData, from: Address) -> Display {
+fn describe_typed(td: &TypedData, ctx: &DisplayCtx) -> Display {
     let mut warnings = Vec::new();
     let mut dangers = Vec::new();
     let d = &td.domain;
@@ -305,7 +337,7 @@ fn describe_typed(td: &TypedData, from: Address) -> Display {
     if let Some(id) = d.chain_id {
         fields.push(network(id.saturating_to(), &mut warnings));
     }
-    fields.push(field("Signer", checksum(from)));
+    fields.push(signer_field(ctx));
     if let Some(name) = &d.name {
         fields.push(field("App / contract name", name.to_string()));
     }
@@ -357,9 +389,9 @@ fn describe_typed(td: &TypedData, from: Address) -> Display {
     }
 }
 
-fn describe_message(m: &[u8], from: Address) -> Display {
+fn describe_message(m: &[u8], ctx: &DisplayCtx) -> Display {
     let mut warnings = Vec::new();
-    let mut fields = vec![field("Signer", checksum(from))];
+    let mut fields = vec![signer_field(ctx)];
     let text = std::str::from_utf8(m)
         .ok()
         .filter(|s| s.chars().all(|c| !c.is_control() || c == '\n' || c == '\t'));
@@ -409,18 +441,34 @@ mod tests {
     const ME: Address = address!("0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266");
     const SPENDER: Address = address!("0x70997970C51812dc3A010C7d01b50e0d17dc79C8");
 
+    fn ctx() -> DisplayCtx<'static> {
+        DisplayCtx {
+            from: ME,
+            signer_label: "Main",
+            endpoint_host: Some("base.example"),
+            warnings: vec![],
+        }
+    }
+
+    fn describe_me(p: &Prepared) -> Display {
+        describe(p, &ctx())
+    }
+
     fn tx(to: Option<Address>, input: Vec<u8>) -> Prepared {
-        Prepared::Tx(UnsignedTx::Eip1559(TxEip1559 {
-            chain_id: 8453,
-            nonce: 42,
-            gas_limit: 21000,
-            max_fee_per_gas: 30_000_000_000,
-            max_priority_fee_per_gas: 1_500_000_000,
-            to: to.map_or(TxKind::Create, TxKind::Call),
-            value: U256::from(1_234_500_000_000_000_000u64),
-            input: Bytes::from(input),
-            ..Default::default()
-        }))
+        Prepared::Tx {
+            broadcast: true,
+            tx: UnsignedTx::Eip1559(TxEip1559 {
+                chain_id: 8453,
+                nonce: 42,
+                gas_limit: 21000,
+                max_fee_per_gas: 30_000_000_000,
+                max_priority_fee_per_gas: 1_500_000_000,
+                to: to.map_or(TxKind::Create, TxKind::Call),
+                value: U256::from(1_234_500_000_000_000_000u64),
+                input: Bytes::from(input),
+                ..Default::default()
+            }),
+        }
     }
 
     fn call(sig: &str, args: &[DynSolValue]) -> Vec<u8> {
@@ -435,7 +483,7 @@ mod tests {
 
     #[test]
     fn plain_transfer_fields() {
-        let d = describe(&tx(Some(SPENDER), vec![]), ME);
+        let d = describe_me(&tx(Some(SPENDER), vec![]));
         assert_eq!(value(&d, "Network"), "Base (eip155:8453)");
         assert_eq!(
             value(&d, "To"),
@@ -445,6 +493,11 @@ mod tests {
         assert_eq!(value(&d, "Max fee"), "30 gwei");
         assert_eq!(value(&d, "Max priority"), "1.5 gwei");
         assert_eq!(value(&d, "Max cost"), "1.23513 ETH");
+        assert_eq!(
+            value(&d, "Signer"),
+            "Main · 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"
+        );
+        assert_eq!(value(&d, "Sent via"), "base.example");
         assert!(d.dangers.is_empty() && d.warnings.is_empty());
     }
 
@@ -457,7 +510,7 @@ mod tests {
                 DynSolValue::Uint(U256::MAX, 256),
             ],
         );
-        let d = describe(&tx(Some(ME), input), ME);
+        let d = describe_me(&tx(Some(ME), input));
         assert_eq!(
             d.decoded.as_deref(),
             Some("approve(spender=0x70997970C51812dc3A010C7d01b50e0d17dc79C8, amount=unlimited)")
@@ -472,8 +525,8 @@ mod tests {
             "setApprovalForAll(address,bool)",
             &[DynSolValue::Address(SPENDER), DynSolValue::Bool(true)],
         );
-        assert_eq!(describe(&tx(Some(ME), input), ME).dangers.len(), 1);
-        let d = describe(&tx(None, vec![0x60, 0x80]), ME);
+        assert_eq!(describe_me(&tx(Some(ME), input)).dangers.len(), 1);
+        let d = describe_me(&tx(None, vec![0x60, 0x80]));
         assert_eq!(value(&d, "To"), "Contract creation");
         assert_eq!(d.dangers.len(), 1);
     }
@@ -481,10 +534,14 @@ mod tests {
     #[test]
     fn unknown_call_and_chain_warn() {
         let mut p = tx(Some(SPENDER), vec![1, 2, 3, 4, 5]);
-        if let Prepared::Tx(UnsignedTx::Eip1559(t)) = &mut p {
+        if let Prepared::Tx {
+            tx: UnsignedTx::Eip1559(t),
+            ..
+        } = &mut p
+        {
             t.chain_id = 999_999;
         }
-        let d = describe(&p, ME);
+        let d = describe_me(&p);
         assert_eq!(d.warnings.len(), 2, "{:?}", d.warnings);
     }
 
@@ -498,17 +555,17 @@ mod tests {
             "message":{"spender":"0x70997970C51812dc3A010C7d01b50e0d17dc79C8","sigDeadline":"1"}
         }))
         .unwrap();
-        let d = describe(&Prepared::TypedData(Box::new(td)), ME);
+        let d = describe_me(&Prepared::TypedData(Box::new(td)));
         assert_eq!(d.dangers[0].confirm.as_deref(), Some("79C8"));
     }
 
     #[test]
     fn messages() {
         let siwe = b"example.com wants you to sign in with your Ethereum account:\n0xf39F\n\nURI: https://example.com\nChain ID: 1";
-        let d = describe(&Prepared::PersonalSign(siwe.to_vec()), ME);
+        let d = describe_me(&Prepared::PersonalSign(siwe.to_vec()));
         assert_eq!(d.title, "Sign-In with Ethereum");
         assert_eq!(value(&d, "Site"), "example.com");
-        let d = describe(&Prepared::PersonalSign(vec![0xab; 32]), ME);
+        let d = describe_me(&Prepared::PersonalSign(vec![0xab; 32]));
         assert_eq!(d.warnings.len(), 1);
         assert!(d.decoded.unwrap().starts_with("0xabab"));
     }
