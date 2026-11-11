@@ -12,6 +12,10 @@ pub enum Error {
     Replay,
     #[error("stale message")]
     Stale,
+    #[error("bad signature")]
+    Signature,
+    #[error("expired")]
+    Expired,
     #[error("json: {0}")]
     Json(#[from] serde_json::Error),
 }

@@ -24,7 +24,7 @@ listed below while they exist.
 
 ## M3 — connections (Rust)
 
-### 3.1 Protocol primitives in `blox-proto` (additive)  `[ ]`
+### 3.1 Protocol primitives in `blox-proto` (additive)  `[x]`
 - `ed25519-dalek` dependency. `ident`: Ed25519 signing/verifying keys (secret bytes for storage,
   `Debug` hides values), `InboxId` (the verifying key, base64url, 43 chars).
 - `relay_url::normalize` (§4.3) and the QR relay field mapping (§5.1).
@@ -162,3 +162,8 @@ listed below while they exist.
 
 ## Notes
 (Implementation-specific details are added here as steps complete.)
+
+- **3.1:** `ed25519-dalek` 3 with strict verification (`verify_strict`) and weak keys refused,
+  so a token or request can't be satisfied by a small-order key. The token's id covers only
+  the body, so the half-signed and the countersigned token have the same id and one revocation
+  covers both. `statement::iso8601` is a small civil-date conversion, to avoid a date crate.
