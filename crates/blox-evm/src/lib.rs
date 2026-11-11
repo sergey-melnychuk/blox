@@ -9,6 +9,7 @@ pub mod sign;
 pub mod tx;
 
 pub use alloy_primitives::{Address, B256, U256};
+pub use alloy_signer_local::PrivateKeySigner;
 
 pub const KIND_TX: &str = "evm.tx";
 pub const KIND_TYPED_DATA: &str = "evm.typed_data";

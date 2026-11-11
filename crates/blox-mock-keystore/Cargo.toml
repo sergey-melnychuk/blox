@@ -7,8 +7,10 @@ license.workspace = true
 
 [dependencies]
 blox-client = { version = "0.1.0", path = "../blox-client" }
+blox-evm = { version = "0.1.0", path = "../blox-evm" }
 blox-proto = { version = "0.1.0", path = "../blox-proto" }
-tokio = { version = "1.53.1", features = ["rt", "time"] }
+sha2 = "0.11.0"
+tokio = { version = "1.53.1", features = ["rt", "time", "sync", "macros"] }
 
 [dev-dependencies]
 axum = "0.8.9"

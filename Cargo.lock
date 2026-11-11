@@ -998,6 +998,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "blox-mock-keystore"
+version = "0.1.0"
+dependencies = [
+ "axum",
+ "blox-client",
+ "blox-evm",
+ "blox-proto",
+ "blox-relay",
+ "serde_json",
+ "sha2 0.11.0",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
 name = "blox-proto"
 version = "0.1.0"
 dependencies = [

@@ -76,7 +76,7 @@ listed below while they exist.
   `disconnect` (unbind + revoke), `verify_connection` for servers.
 - Back in the workspace (with `blox-evm` as a dependency).
 
-### 3.6 Mock keystore and the M3 integration tests  `[ ]`
+### 3.6 Mock keystore and the M3 integration tests  `[x]`
 - `blox-mock-keystore`: signers with transport keys, accept an offer, wait for `bound` (revoke
   after the timeout), connection registry, inbox readers, dispatch by `spk`, answer requests
   with a handler, `cancel`, `unbind`, disconnect.
@@ -206,3 +206,13 @@ listed below while they exist.
   file and rename. `verify_connection` (server login) parses the statement's `Account`,
   `Nonce`, `Issued` (≤ 300 s old) and `Expires` lines. **Workspace exclusions now:**
   `blox-mock-keystore`, `blox-ffi`.
+- **3.6:** `MockKeystore` mirrors what the app does (§10.6): one reader per (relay, signer),
+  dispatch by `spk` (a pending connect's `bound` first, then live connections), requests
+  acknowledged only once answered/cancelled, answers stored and re-sent when a request is
+  redelivered (recognised by the envelope's digest, since the replay set refuses it), a
+  handler returning `None` models a user who hasn't acted. `go_offline`/`go_online` model the
+  app being closed/opened. Test hooks: `bound_timeout`, `wrong_statement_key`. 11 integration
+  tests + the log-leak test pass (repeated runs stable). Not covered by an integration test:
+  a second valid `bind` (`contested`), which needs a misbehaving relay — the honest relay's
+  single-use ticket makes it impossible; the client's check is a few lines in `connect_new`.
+  **Workspace exclusions now:** `blox-ffi` (until 5.1).
