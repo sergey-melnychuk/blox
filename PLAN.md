@@ -110,7 +110,7 @@ listed below while they exist.
   no_endpoint, decode_failed, two signers, message signatures, offline-then-online within 5 min,
   crash redelivery. Skip with a message when anvil is missing.
 
-### 4.4 Runnable mock keystore, example requester, `RUN.md`  `[ ]`
+### 4.4 Runnable mock keystore, example requester, `RUN.md`  `[x]`
 - `blox-mock-keystore` binary: reads offer URIs on stdin, auto-approves with test signers,
   fills and sends through a given endpoint. Used by `RUN.md` and by the SDK's Deno tests.
 - `blox-client` example that connects and sends; `RUN.md` rewritten for relay + mock keystore +
@@ -245,3 +245,12 @@ listed below while they exist.
   endpoint). `crash_once(Crash::…)` + `go_offline`/`go_online` simulate the two crash points.
   The anvil tests (10) start their own anvil on a free port and skip with a message when it
   is missing; receipts are polled because anvil mines asynchronously.
+- **4.4:** `blox-mock-keystore` binary: stdin takes `BLOX:` lines, stdout gives JSON lines
+  (`ready`, `connected`, `error`); flags `--endpoint CHAIN=URL`, `--signers`, `--signer`,
+  `--days`, `--mnemonic`. `examples/send.rs` (blox-client) draws the QR in the terminal or
+  prints it (`--print-uri`), stores the connection in a 0600 file, and sends a transaction,
+  a message, or disconnects. A smoke run with real processes (anvil, relay, mock keystore,
+  example) connected, sent and mined a transaction, signed a message from the stored
+  connection without a QR, and disconnected. `tests/qr_size.rs` pins the QR size: version 8
+  for a typical offer, at most version 10. `RUN.md` is rewritten (without a phone; with the
+  app, marked as pending 5.2). M4 is complete.
