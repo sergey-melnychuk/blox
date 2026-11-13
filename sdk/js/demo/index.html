@@ -8,34 +8,37 @@
       :root { color-scheme: light dark; --bg: #fafafa; --fg: #111; --muted: #666; --card: #fff; --line: #ddd; }
       @media (prefers-color-scheme: dark) { :root { --bg: #111; --fg: #eee; --muted: #999; --card: #1b1b1b; --line: #333; } }
       body { margin: 0; background: var(--bg); color: var(--fg); font: 16px/1.5 system-ui, sans-serif; }
-      main { max-width: 640px; margin: 0 auto; padding: 24px 16px; }
+      main { max-width: 560px; margin: 0 auto; padding: 24px 16px; }
       section { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 16px; margin: 16px 0; }
-      label { display: block; font-size: 13px; color: var(--muted); margin-top: 8px; }
-      input, select { width: 100%; box-sizing: border-box; font: inherit; padding: 6px 8px; border: 1px solid var(--line); border-radius: 8px; background: transparent; color: inherit; }
+      input { width: 100%; box-sizing: border-box; font: inherit; padding: 6px 8px; margin-top: 8px; border: 1px solid var(--line); border-radius: 8px; background: transparent; color: inherit; }
       button { font: inherit; padding: 8px 14px; margin: 8px 8px 0 0; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); color: inherit; cursor: pointer; }
-      pre { white-space: pre-wrap; word-break: break-all; font-size: 13px; color: var(--muted); }
+      #account { font-family: ui-monospace, monospace; }
+      #log { font: 13px/1.6 ui-monospace, monospace; color: var(--muted); word-break: break-all; }
+      #log a { color: inherit; text-decoration: none; }
+      .on { display: none; }
+      body.connected .on { display: block; }
+      body.connected .off { display: none; }
+      body.connected #disconnect { display: inline-block; }
     </style>
   </head>
   <body>
     <main>
       <h1>Blox demo</h1>
-      <p>A wagmi app with the Blox connector: one dependency, one import (BLOX.md §9.2).</p>
       <section>
-        <label>Relay <input id="relay" value="http://localhost:8080" /></label>
-        <label>Chain RPC (anvil) <input id="rpc" value="http://localhost:8545" /></label>
-        <button id="connect">Connect</button>
-        <button id="disconnect">Disconnect</button>
-        <pre id="account">Not connected</pre>
+        <span id="account"></span>
+        <div>
+          <button id="connect" class="off">Connect</button>
+          <button id="disconnect" class="on">Disconnect</button>
+        </div>
       </section>
-      <section>
-        <label>To <input id="to" value="0x70997970C51812dc3A010C7d01b50e0d17dc79C8" /></label>
-        <label>Value (wei) <input id="value" value="1000000000000000" /></label>
+      <section class="on">
+        <input id="to" placeholder="To (empty: yourself)" spellcheck="false" />
+        <input id="amount" value="0.0001" inputmode="decimal" />
         <button id="send">Send</button>
         <button id="sign">Sign message</button>
         <button id="typed">Sign typed data</button>
-        <label>Chain <select id="chain"><option value="31337">Anvil (31337)</option><option value="1">Ethereum (1)</option></select></label>
       </section>
-      <pre id="log"></pre>
+      <div id="log"></div>
     </main>
     <script type="module" src="./main.ts"></script>
   </body>

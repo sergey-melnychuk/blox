@@ -1,19 +1,29 @@
 # Blox demo (wagmi)
 
-A static wagmi app using the Blox connector from the SDK's source.
+A static wagmi site with the Blox connector, built from the SDK's source. It connects to a
+phone through the public relay and sends on Sepolia. Hosted at https://relay.example.com/demo/
+(DEPLOY.md, "The demo site").
 
 ```sh
-# Terminal 1–3: a local chain, a relay, and either the Android app or the mock keystore
-anvil --host any-address
-BLOX_LISTEN=:8080 cargo run -p blox-relay
-cargo run -p blox-mock-keystore -- --endpoint 31337=http://localhost:8545   # paste the QR string
-
-# Terminal 4
-cd sdk/js/demo && npm install && npm run dev
+cd sdk/js/demo && npm install
+npm run dev          # http://localhost:5173
+npm run build        # dist/, relative paths: serve it under any path
 ```
 
-Open the printed URL, click **Connect**, and scan the QR code with the Blox app. With the
-mock keystore instead, open the page with `?mock`: the `BLOX:` string is printed in the log
-instead of drawn; paste it into the mock keystore's terminal.
+The phone needs a Sepolia endpoint in Settings (chain `11155111`, e.g.
+`https://ethereum-sepolia-rpc.publicnode.com`) and some Sepolia ETH on the signer.
 
-Not verified on the machine this was written on (no Node or browser there).
+Click **Connect**, scan the QR code with the Blox app, then **Send** (empty "To" sends to
+yourself), **Sign message** or **Sign typed data**. Transaction lines link to Etherscan.
+
+Query options for local runs:
+
+| Option | Effect |
+|---|---|
+| `?anvil` or `?anvil=http://host:8545` | anvil (chain 31337) instead of Sepolia |
+| `?relay=http://localhost:8080` | another relay (default `https://relay.example.com`) |
+| `?mock` | print the `BLOX:` string in the log instead of drawing it, for the mock keystore |
+
+With everything local (RUN.md): `scripts/local-services.sh`, then open
+`http://localhost:5173/?anvil&relay=http://localhost:8080&mock` and paste the printed
+`BLOX:` line into `target/local/keystore.in`.

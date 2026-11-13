@@ -262,8 +262,41 @@ The example prints `Connected as 0xf39F…` and a transaction hash. Then
 `--message hello` and `--disconnect` with the same `--relay`.
 
 With the phone: the app, the SDK and the example requester all use `https://relay.example.com`
-by default. Connect from the web demo (`sdk/js/demo`) or the example requester without
-`--relay` and `--print-uri`, and scan the QR code.
+by default. Connect from the web demo (below) or the example requester without `--relay` and
+`--print-uri`, and scan the QR code.
+
+### The demo site
+
+`sdk/js/demo` builds to static files that work under any path; `relay.example.com/demo/` serves
+them from the relay's own site. Build (local) and copy:
+
+```sh
+(cd sdk/js/demo && npm install && npm run build)
+scp -r sdk/js/demo/dist "$HOST":/tmp/blox-demo
+```
+
+On the server:
+
+```sh
+rm -rf /var/www/blox-demo && cp -r /tmp/blox-demo /var/www/blox-demo && chmod -R a+rX /var/www/blox-demo
+```
+
+and in the Caddyfile's site block, the relay goes under `handle` next to the demo:
+
+```
+relay.example.com {
+	redir /demo /demo/
+	handle_path /demo/* {
+		root * /var/www/blox-demo
+		file_server
+	}
+	handle {
+		reverse_proxy localhost:8080 {
+			flush_interval -1
+		}
+	}
+}
+```
 
 ## 7. Upgrade and roll back
 

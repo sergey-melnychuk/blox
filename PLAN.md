@@ -378,6 +378,13 @@ listed below while they exist.
   `@blox/sdk` to the SDK source, so no build step is needed. `?mock` prints the QR string for
   the mock keystore. Type-checked with Deno against wagmi 3.6.9 / viem 2.57.17; not run
   (no Node or browser here). Packaging (`npm run build` with `tsc`) is also untested here.
+- **6.4, Sepolia demo (2026-11-13):** the page now targets Sepolia through the public relay
+  for hosting at `relay.example.com/demo/` (DEPLOY.md): connect, send (empty "To" sends to
+  yourself; amount in ETH), sign message, typed data, disconnect, with Etherscan links.
+  `?anvil[=url]`, `?relay=` and `?mock` keep local runs. `base: "./"` so the build works under
+  any path; `@wagmi/core` and viem are deduped and a `tsconfig.json` maps them to the demo's
+  copies (otherwise the SDK's Deno copies clash in `tsc`). `npm run build` and `tsc` pass with
+  Node; served under `/demo/` the assets load. Not yet run in a browser.
 - **7.1:** `deploy/Dockerfile` (multi-stage, `rust:1-slim-bookworm` → distroless `cc` nonroot;
   pin by digest for production), `deploy/Caddyfile` (`flush_interval -1`, no access log),
   `.dockerignore`, and `README.md` per §14.2 with a status note. The image was not built here

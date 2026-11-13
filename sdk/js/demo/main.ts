@@ -8,37 +8,65 @@ import {
   sendTransaction,
   signMessage,
   signTypedData,
-  switchChain,
   waitForTransactionReceipt,
   watchAccount,
 } from "@wagmi/core";
-import { foundry, mainnet } from "viem/chains";
+import { type Chain, foundry, sepolia } from "viem/chains";
+import { parseEther } from "viem";
 import { blox } from "@blox/sdk/wagmi";
 
-const $ = (id: string) => document.getElementById(id) as HTMLInputElement;
-const log = (s: string) => ($("log").textContent = `${new Date().toLocaleTimeString()} ${s}\n` + $("log").textContent);
+// Query options, for local runs (README.md):
+//   ?anvil[=http://localhost:8545]   anvil instead of Sepolia
+//   ?relay=http://localhost:8080     another relay (default: https://relay.example.com)
+//   ?mock                            print the QR string in the log, for the mock keystore
+const q = new URLSearchParams(location.search);
+const anvil = q.has("anvil");
+const chain: Chain = anvil ? foundry : sepolia;
+const rpc = anvil ? q.get("anvil") || "http://localhost:8545" : "https://ethereum-sepolia-rpc.publicnode.com";
+const explorer = anvil ? undefined : "https://sepolia.etherscan.io";
 
-// `?mock`: print the QR string instead of drawing it, to paste into the mock keystore.
-const mock = new URLSearchParams(location.search).has("mock");
+const $ = <T extends HTMLElement = HTMLInputElement>(id: string) => document.getElementById(id) as T;
 
-function makeConfig() {
-  return createConfig({
-    chains: [foundry, mainnet],
-    // The one line a wagmi site adds:
-    connectors: [blox({ name: "Blox demo", relay: $("relay").value, ...(mock ? { onQr: (uri) => uri && log(uri) } : {}) })],
-    transports: { [foundry.id]: http($("rpc").value), [mainnet.id]: http() },
-  });
+function log(text: string, link?: string) {
+  const line = document.createElement("div");
+  line.textContent = `${new Date().toLocaleTimeString()} ${text} `;
+  if (link) {
+    const a = document.createElement("a");
+    a.href = link;
+    a.target = "_blank";
+    a.rel = "noopener";
+    a.textContent = "↗";
+    line.append(a);
+  }
+  $("log").prepend(line);
 }
 
-let config = makeConfig();
-const run = (f: () => Promise<unknown>) => () => f().catch((e) => log(`error: ${e.shortMessage ?? e.message}`));
+const config = createConfig({
+  chains: [chain],
+  // The one line a wagmi site adds:
+  connectors: [
+    blox({
+      name: "Blox demo",
+      ...(q.get("relay") ? { relay: q.get("relay")! } : {}),
+      ...(q.has("mock") ? { onQr: (uri: string | null) => uri && log(uri) } : {}),
+    }),
+  ],
+  transports: { [chain.id]: http(rpc) } as never,
+});
 
-watchAccount(config, { onChange: (a) => ($("account").textContent = a.address ? `${a.address} on chain ${a.chainId}` : "Not connected") });
+const short = (a: string) => `${a.slice(0, 6)}…${a.slice(-4)}`;
+watchAccount(config, {
+  onChange: (a) => {
+    $("account").textContent = a.address ? `${short(a.address)} · ${chain.name}` : "";
+    document.body.classList.toggle("connected", !!a.address);
+  },
+});
 reconnect(config);
 
+const run = (f: () => Promise<unknown>) => () =>
+  f().catch((e) => log(`${e.shortMessage ?? e.message}`));
+
 $("connect").onclick = run(async () => {
-  config = makeConfig();
-  watchAccount(config, { onChange: (a) => ($("account").textContent = a.address ? `${a.address} on chain ${a.chainId}` : "Not connected") });
   const r = await connect(config, { connector: config.connectors[0] });
   log(`connected ${r.accounts[0]}`);
 });
@@ -47,22 +75,21 @@ $("disconnect").onclick = run(async () => {
   log("disconnected");
 });
 $("send").onclick = run(async () => {
-  const hash = await sendTransaction(config, { to: $("to").value as `0x${string}`, value: BigInt($("value").value) });
-  log(`sent ${hash}`);
+  const to = ($("to").value.trim() || getAccount(config).address) as `0x${string}`;
+  const hash = await sendTransaction(config, { to, value: parseEther($("amount").value || "0") });
+  log(`sent ${short(hash)}`, explorer && `${explorer}/tx/${hash}`);
   const r = await waitForTransactionReceipt(config, { hash });
-  log(`mined in block ${r.blockNumber}: ${r.status}`);
+  log(`block ${r.blockNumber}: ${r.status}`, explorer && `${explorer}/tx/${hash}`);
 });
-$("sign").onclick = run(async () => log(`signature ${await signMessage(config, { message: "Hello from the Blox demo" })}`));
+$("sign").onclick = run(async () =>
+  log(`signature ${await signMessage(config, { message: "Hello from the Blox demo" })}`)
+);
 $("typed").onclick = run(async () => {
   const sig = await signTypedData(config, {
-    domain: { name: "Blox demo", chainId: getAccount(config).chainId },
+    domain: { name: "Blox demo", chainId: chain.id },
     types: { Mail: [{ name: "contents", type: "string" }] },
     primaryType: "Mail",
     message: { contents: "hello" },
   });
   log(`typed signature ${sig}`);
-});
-$("chain").onchange = run(async () => {
-  await switchChain(config, { chainId: Number($("chain").value) as 1 | 31337 });
-  log(`switched to chain ${$("chain").value}`);
 });
