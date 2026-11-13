@@ -679,10 +679,11 @@ Required, because the browser SDK talks to the relay directly.
   a ticket, never by a cookie.
 
 ### 8.7 Deployment
-- A single static binary. Configuration: `BLOX_LISTEN` (default `localhost:8080`),
+- A single binary. Configuration: `BLOX_LISTEN` (default `localhost:8080`),
   limits, and `--trust-proxy`.
 - Put TLS in front with Caddy (automatic certificates). Caddy has no access log unless the
-  `log` directive is used. Keep it that way.
+  `log` directive is used. An access log records client addresses and request URIs (which
+  hold inbox ids); the public instance keeps one (DEPLOY.md §4).
   ```
   relay.example.com {
       reverse_proxy localhost:8080 {

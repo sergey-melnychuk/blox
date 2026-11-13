@@ -1,6 +1,6 @@
 # Deploying the relay
 
-How to run the public relay (`relay.example.com`, or your own host) on a Linux server: a static
+How to run the public relay (`relay.example.com`, or your own host) on a Linux server: one
 binary under systemd, Caddy in front for TLS, logs in the journal with rotation. For running
 everything on your own computer, see [RUN.md](RUN.md). The relay itself is specified in
 BLOX.md §8.
@@ -11,11 +11,11 @@ phones, sites ──HTTPS :443──▶ Caddy (TLS, certificates) ──HTTP loc
                                    └──────────── journald (rotated) ◀───────────────┘
 ```
 
-- **blox-relay**: one static binary with no files, no database and no state on disk. A
+- **blox-relay**: one binary with no files, no database and no state on disk. A
   restart drops queued messages, tickets and revocations, which is safe (BLOX.md §5.5).
   It runs as a throwaway user under a locked-down systemd unit.
 - **Caddy** gets and renews the certificate, and is the only thing listening on the internet.
-  It writes no access log.
+  The Caddyfile here has no access log (section 4).
 - **Logs**: the relay logs only its start line by default, and at `debug` the route template,
   status and latency of each request. It never logs addresses, paths, tokens or bodies
   (BLOX.md §8.5).
@@ -35,7 +35,7 @@ as root (or with `sudo`).
 
 ## 1. Server
 
-- Debian 12+ or Ubuntu 22.04+ (any Linux with systemd works; the binary is static), x86-64
+- Debian 12+ or Ubuntu 22.04+ (any Linux with systemd and glibc 2.34+), x86-64
   or arm64. 1 vCPU and 1 GB RAM is plenty.
 - **DNS:** an `A` record (and `AAAA` if the server has IPv6) for the relay's host name
   pointing at the server. Caddy can only get a certificate once this resolves.
@@ -51,29 +51,36 @@ as root (or with `sudo`).
   timedatectl set-ntp true             # if it isn't
   ```
 
-## 2. Build (local)
+## 2. Build
 
-A static Linux binary, cross-built with zig (`brew install zig`, `cargo install cargo-zigbuild`).
-Pick the server's architecture (`uname -m` on the server: `x86_64` or `aarch64`):
+A release binary for the server's architecture (`uname -m`: `x86_64` or `aarch64`), linked
+against glibc 2.34 or newer. Either of these:
 
-```sh
-rustup target add x86_64-unknown-linux-musl          # or aarch64-unknown-linux-musl
-cargo zigbuild --release --locked -p blox-relay --target x86_64-unknown-linux-musl
-file target/x86_64-unknown-linux-musl/release/blox-relay   # "statically linked"
-shasum -a 256 target/x86_64-unknown-linux-musl/release/blox-relay
-```
+- **On a Linux machine** of the same architecture whose glibc is no newer than the server's
+  (`ldd --version | head -1` on both), with Rust 1.94+ and `build-essential`:
+  ```sh
+  cargo build --release --locked -p blox-relay      # target/release/blox-relay
+  ```
+- **On macOS**, cross-built with zig (`brew install zig`, `cargo install cargo-zigbuild`).
+  The `.2.34` suffix sets the oldest glibc the binary runs on:
+  ```sh
+  rustup target add x86_64-unknown-linux-gnu          # or aarch64-unknown-linux-gnu
+  cargo zigbuild --release --locked -p blox-relay --target x86_64-unknown-linux-gnu.2.34
+  # target/x86_64-unknown-linux-gnu/release/blox-relay
+  ```
+  zig's "ignoring deprecated linker optimization setting" warning is harmless.
 
-The "ignoring deprecated linker optimization setting" warning comes from zig and is harmless.
-Building on the server instead works too (`cargo build --release --locked -p blox-relay`
-with Rust 1.94+ and `build-essential`), but a small server may run out of memory.
+Not musl: its memory allocator is slow under the relay's multithreaded load. Building on the
+server itself works too, but a 1 GB server runs out of memory.
 
 ## 3. Install the relay
 
-Copy the binary and the deploy files (local; `HOST` is your server):
+Copy the binary and the deploy files (`HOST` is your server; a binary built on Linux is at
+`target/release/blox-relay`):
 
 ```sh
 HOST=root@relay.example.com
-scp target/x86_64-unknown-linux-musl/release/blox-relay \
+scp target/x86_64-unknown-linux-gnu/release/blox-relay \
     deploy/blox-relay.service deploy/relay.env deploy/Caddyfile deploy/journald-blox.conf \
     "$HOST":/tmp/
 ```
@@ -130,13 +137,38 @@ What the Caddyfile does:
 
 - `reverse_proxy localhost:8080` with **`flush_interval -1`**, so server-sent events (how
   phones and sites wait for messages) go through at once instead of being buffered.
-- **No `log` directive in the site block**, so there is no access log. Keep it that way.
+- **No `log` directive in the site block**, so there is no access log. Adding one
+  (`log { output file … }`) records each request's client address, URI (which holds the
+  inbox id) and headers. The public instance at `relay.example.com` keeps such a log.
 - The global `log` block excludes `http.log.error`, `http.handlers.reverse_proxy` and
   `http.stdlib`. Those loggers write the client address and the full URI (which holds an inbox
   id) when a request fails, for example while the relay is restarting. Everything else
   (startup, certificates) still goes to the journal.
 - Caddy replaces any `X-Forwarded-For` a client sends with the real address, and the relay
   reads the last entry, so clients can't dodge the per-IP limits.
+
+### On a server that already runs other things
+
+A common case: the distribution's own `caddy` package serving other sites too, and another
+service on port 8080.
+
+- **Port:** if 8080 is taken (`ss -tlnp`), use another loopback port in both places:
+  `BLOX_LISTEN=localhost:8090` in `/etc/blox/relay.env` and `reverse_proxy localhost:8090`.
+- **Caddyfile:** don't replace it. Append the site block, and put the global `{ log … }` block
+  at the very top (Caddy takes global options only there; it then applies to every site).
+  Check the new file before installing it; a reload keeps the other sites up:
+  ```sh
+  caddy validate --adapter caddyfile --config /tmp/Caddyfile.new
+  install -m 0644 /tmp/Caddyfile.new /etc/caddy/Caddyfile && systemctl reload caddy
+  ```
+- **Memory:** with 1 GB, cap queued messages at 128 MiB and the unit at 320 MB:
+  ```sh
+  sed -i 's/^#BLOX_GLOBAL_MAX_BYTES=.*/BLOX_GLOBAL_MAX_BYTES=134217728/' /etc/blox/relay.env
+  mkdir -p /etc/systemd/system/blox-relay.service.d
+  printf '[Service]\nMemoryMax=320M\n' > /etc/systemd/system/blox-relay.service.d/memory.conf
+  systemctl daemon-reload && systemctl restart blox-relay
+  ```
+- **Logs:** the journald drop-in (section 5) applies to the whole host.
 
 ## 5. Logs and rotation
 
@@ -241,7 +273,7 @@ Build (step 2), copy the binary, then on the server:
 cp /usr/local/bin/blox-relay /usr/local/bin/blox-relay.prev
 install -m 0755 /tmp/blox-relay /usr/local/bin/blox-relay
 systemctl restart blox-relay
-journalctl -u blox-relay -n 5 --no-pager && curl -s http://localhost:8080/health
+journalctl -u blox-relay -n 5 --no-pager && curl -s http://localhost:8080/health   # or your port
 ```
 
 A restart takes about a second, and clients reconnect. Messages that were queued (5 minutes
@@ -262,7 +294,8 @@ Caddy updates come with `apt upgrade`. After editing the Caddyfile: `caddy valid
 - **Monitoring:** check `GET /health` from outside every minute or so (any uptime monitor).
   `GET /v1/info` returns the relay's time; if it drifts from real time, fix NTP (section 1).
 - **Limits** (BLOX.md §8.4) are in `relay.env`, published at `/v1/info`. The defaults hold
-  512 MB of queued messages at most; `MemoryMax=1G` in the unit leaves room above that.
+  512 MB of queued messages at most; `MemoryMax=1G` in the unit leaves room above that. On a
+  smaller server, lower both (section 4).
 - **Restarts** are safe at any time (section 7).
 - **Nothing to back up.** The relay has no data. Keep `relay.env` and the Caddyfile in this
   repository (or your own config management).

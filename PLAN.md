@@ -157,7 +157,8 @@ listed below while they exist.
 
 ### 7.1 Deployment files and README  `[x]`
 - `deploy/Dockerfile`, `deploy/Caddyfile`, README per §14.2.
-- **Deploying `relay.example.com`, the release key and reproducible signed APKs** `[!]`: the user's.
+- **Deploying `relay.example.com`** `[x]` (2026-11-13, by the user from DEPLOY.md).
+- **The release key and reproducible signed APKs** `[!]`: the user's.
 
 ---
 
@@ -395,6 +396,15 @@ listed below while they exist.
   refuse to start (clap took only `true`/`false`); it now takes 1/0, yes/no, on/off too, and
   the start line logs `trust_proxy`. The relay's log has no colour codes off a terminal. The
   unit itself wasn't run (no Linux host here).
+- **7.1, deployed (2026-11-13):** the public relay runs under the unit, behind a Caddy shared with other sites. The relay
+  is on another loopback port (8080 was taken), with `BLOX_GLOBAL_MAX_BYTES` 128 MiB and a
+  `MemoryMax=320M` drop-in. `systemd-analyze security`: 1.2 OK; `/health`, `/v1/info` and
+  CORS answer from outside. The RUN.md flow from a local machine through the public relay (anvil and
+  mock keystore local): connect, send mined, `personal_sign` verified with `cast`, disconnect.
+  Builds are glibc now (`cargo build` on Linux, or `cargo zigbuild` for `…-gnu.2.34`), not
+  musl, whose allocator is slow under multithreaded load. The site keeps a Caddy access log
+  (the user's choice); the global log exclusion and the journald drop-in weren't installed.
+  Still to do: a run with the phone, and the syscall filter under real traffic.
 
 - **Fix after 7.1 (flaky anvil tests):** about one run in five hung for the full 300 s
   request timeout. Two causes, both found with tracing:
@@ -459,7 +469,7 @@ listed below while they exist.
    Safari; check IndexedDB keys are non-extractable (`crypto.subtle.exportKey` fails), Web
    Locks across tabs, cancel on reload/`pagehide`; the one-dependency check in fresh Vite and
    Next.js apps.
-3. **Release (7):** build and run the relay image, deploy behind Caddy at `relay.example.com`,
+3. **Release (7):** the relay is deployed at `relay.example.com` (run the phone through it);
    create the offline release key, reproducible signed APKs with published checksums.
 4. **Open product question:** the Permit2 danger flag makes every Uniswap swap need a typed
    confirmation; v2 per-connection policies could relax it (BLOX.md §12.2).

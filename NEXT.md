@@ -7,7 +7,7 @@ The JSON-RPC adapter (`blox rpc`) is retired. See BLOX.md §16.
 
 **Done so far:** M1, M2 (retired), M3, M4, M5 (`blox-ffi` and the Android app, run end to
 end on a phone; some device checks remain), M6 except browser checks, and M7's files and
-runbook (DEPLOY.md; not yet run on Linux). Step-by-step status, notes and what's left: PLAN.md.
+runbook; the relay is live at `relay.example.com`. Step-by-step status, notes and what's left: PLAN.md.
 
 ## M3: connections (Rust)
 
@@ -54,8 +54,9 @@ runbook (DEPLOY.md; not yet run on Linux). Step-by-step status, notes and what's
 ## M7: Deploy and release
 
 - [x] Dockerfile and Caddyfile, README (§14.2)
-- [x] Runbook `DEPLOY.md`: systemd unit, static builds, Caddy, log rotation, checks, upgrades
-- [ ] Deploy `relay.example.com`, reproducible signed APK
+- [x] Runbook `DEPLOY.md`: systemd unit, builds, Caddy, log rotation, checks, upgrades
+- [x] Deploy `relay.example.com` (checked end to end from a local machine; a phone run is next)
+- [ ] Reproducible signed APK
 
 ## Later
 

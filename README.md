@@ -85,7 +85,7 @@ BLOX_LISTEN=localhost:8080 cargo run --release -p blox-relay
 ```
 
 To self-host, run it under systemd (or Docker) with Caddy in front for TLS:
-[DEPLOY.md](DEPLOY.md) has the whole runbook (static build, unit, Caddyfile, log rotation,
+[DEPLOY.md](DEPLOY.md) has the whole runbook (build, unit, Caddyfile, log rotation,
 checks, upgrades), with the files in [`deploy/`](deploy/).
 
 Limits (message TTL 5 minutes, queue sizes, rate limits, token lifetime) are flags and
