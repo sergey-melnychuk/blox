@@ -381,10 +381,11 @@ listed below while they exist.
 - **6.4, Sepolia demo (2026-11-13):** the page now targets Sepolia through the public relay
   for hosting at `relay.example.com/demo/` (DEPLOY.md): connect, send (empty "To" sends to
   yourself; amount in ETH), sign message, typed data, disconnect, with Etherscan links.
-  `?anvil[=url]`, `?relay=` and `?mock` keep local runs. `base: "./"` so the build works under
-  any path; `@wagmi/core` and viem are deduped and a `tsconfig.json` maps them to the demo's
-  copies (otherwise the SDK's Deno copies clash in `tsc`). `npm run build` and `tsc` pass with
-  Node; served under `/demo/` the assets load. Not yet run in a browser.
+  `?anvil[=url]`, `?relay=` and `?mock` keep local runs. Built with `deno task demo`
+  (`deno bundle` of `main.ts` with the SDK mapped in `deno.json`, then `index.html` copied):
+  two files with relative paths, about 280 KB of JS; no npm, Node or Vite. `deno check`
+  passes; served under `/demo/` behind Caddy, the page and the relay answer. Not yet run in a
+  browser.
 - **7.1:** `deploy/Dockerfile` (multi-stage, `rust:1-slim-bookworm` → distroless `cc` nonroot;
   pin by digest for production), `deploy/Caddyfile` (`flush_interval -1`, no access log),
   `.dockerignore`, and `README.md` per §14.2 with a status note. The image was not built here
@@ -472,7 +473,7 @@ listed below while they exist.
 1. **Android (5.2):** the app builds and the instrumented vectors test passes; run the §13.4
    device checks (StrongBox and TEE devices, fingerprint/face/PIN, screen-lock removal and
    restore).
-2. **Browser (6.x):** run `sdk/js/demo` (`npm install && npm run dev`) in Chrome, Firefox and
+2. **Browser (6.x):** run `sdk/js/demo` (`deno task demo`, then serve `demo/dist`) in Chrome, Firefox and
    Safari; check IndexedDB keys are non-extractable (`crypto.subtle.exportKey` fails), Web
    Locks across tabs, cancel on reload/`pagehide`; the one-dependency check in fresh Vite and
    Next.js apps.

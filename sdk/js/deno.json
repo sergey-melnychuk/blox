@@ -5,12 +5,18 @@
     "@noble/hashes/": "npm:/@noble/hashes@1.8.0/",
     "@wagmi/core": "npm:@wagmi/core@3.6.9",
     "viem": "npm:viem@2.57.17",
-    "viem/": "npm:/viem@2.57.17/"
+    "viem/": "npm:/viem@2.57.17/",
+    "@blox/sdk": "./src/index.ts",
+    "@blox/sdk/wagmi": "./src/wagmi.ts"
   },
   "compilerOptions": {
-    "lib": ["deno.window", "dom"]
+    "lib": [
+      "deno.window",
+      "dom"
+    ]
   },
   "tasks": {
-    "test": "deno test --allow-net --allow-read --allow-run --allow-env test/"
+    "test": "deno test --allow-net --allow-read --allow-run --allow-env test/",
+    "demo": "deno bundle --platform browser --minify -o demo/dist/demo.js demo/main.ts && cp demo/index.html demo/dist/index.html"
   }
 }

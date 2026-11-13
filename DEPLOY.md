@@ -267,11 +267,11 @@ by default. Connect from the web demo (below) or the example requester without `
 
 ### The demo site
 
-`sdk/js/demo` builds to static files that work under any path; `relay.example.com/demo/` serves
+`sdk/js/demo` builds with Deno (no npm) to two static files that work under any path; `relay.example.com/demo/` serves
 them from the relay's own site. Build (local) and copy:
 
 ```sh
-(cd sdk/js/demo && npm install && npm run build)
+(cd sdk/js && deno task demo)          # demo/dist: index.html and demo.js
 scp -r sdk/js/demo/dist "$HOST":/tmp/blox-demo
 ```
 

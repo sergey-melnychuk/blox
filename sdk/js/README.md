@@ -27,4 +27,5 @@ deno task test                                    # needs anvil for the integrat
 npm run build                                     # tsc → dist/
 ```
 
-`demo/` is a Vite + wagmi page using the source directly (`npm install && npm run dev`).
+`demo/` is a wagmi page on Sepolia built from the source with `deno task demo` (no npm); see
+`demo/README.md`.

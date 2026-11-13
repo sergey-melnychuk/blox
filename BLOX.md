@@ -1285,7 +1285,7 @@ blox/
 │   ├── blox-client/           Rust requester (§9)
 │   └── blox-mock-keystore/    Rust keystore for tests (§13.1)
 ├── sdk/js/                    @blox/sdk: TypeScript requester, the modal, the EIP-1193 provider, the
-│                              wagmi connector (`@blox/sdk/wagmi`), and `demo/` (Vite + wagmi)
+│                              wagmi connector (`@blox/sdk/wagmi`), and `demo/` (wagmi)
 ├── android/                   Kotlin/Compose keystore app (§10), Gradle build that runs cargo-ndk
 ├── test-vectors/              JSON vectors pinning the wire format
 ├── deploy/

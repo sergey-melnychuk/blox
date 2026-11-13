@@ -7,7 +7,7 @@
     "npm:@noble/curves@^1.9.1": "1.9.1",
     "npm:@noble/hashes@1.8.0": "1.8.0",
     "npm:@noble/hashes@^1.8.0": "1.8.0",
-    "npm:@wagmi/core@3.6.9": "3.6.9_typescript@5.9.3_viem@2.57.17__typescript@5.9.3",
+    "npm:@wagmi/core@3.6.9": "3.6.9_typescript@5.9.3_viem@2.57.17",
     "npm:typescript@^5.9.0": "5.9.3",
     "npm:viem@2.57.17": "2.57.17_typescript@5.9.3"
   },
@@ -56,7 +56,7 @@
         "@scure/base"
       ]
     },
-    "@wagmi/core@3.6.9_typescript@5.9.3_viem@2.57.17__typescript@5.9.3": {
+    "@wagmi/core@3.6.9_typescript@5.9.3_viem@2.57.17": {
       "integrity": "sha512-n9gUa8YKUJK/+ckQ3+Rm/MrZ5u7QAvKeBTfUv8NwMnS20LV9t1vprt/TzU99sTxXmHiuJoMwr6Q32IG601LKyw==",
       "dependencies": [
         "eventemitter3",

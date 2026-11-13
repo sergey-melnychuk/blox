@@ -5,10 +5,11 @@ phone through the public relay and sends on Sepolia. Hosted at https://relay.exa
 (DEPLOY.md, "The demo site").
 
 ```sh
-cd sdk/js/demo && npm install
-npm run dev          # http://localhost:5173
-npm run build        # dist/, relative paths: serve it under any path
+cd sdk/js && deno task demo                  # demo/dist: index.html and demo.js
+python3 -m http.server -d demo/dist 5173     # or any static server: http://localhost:5173
 ```
+
+No npm: `deno bundle` builds it. The files use relative paths, so they work under any path.
 
 The phone needs a Sepolia endpoint in Settings (chain `11155111`, e.g.
 `https://ethereum-sepolia-rpc.publicnode.com`) and some Sepolia ETH on the signer.
