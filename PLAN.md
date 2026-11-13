@@ -416,8 +416,7 @@ listed below while they exist.
 - **7.1, phone on Sepolia (2026-11-13):** the hosted demo (`relay.example.com/demo/`, Firefox
   160) → the public relay → the user's phone (TEE,
   biometric approval) → Sepolia through the phone's own endpoint. The transaction: status 1, to itself, 0.0001 ETH, nonce 0, gas limit 14,400 for 12,000 used (+20%),
-  EIP-1559 fees filled by the phone. The relay must be in the app's relay list (Settings);
-  without it the phone ignores the QR code.
+  EIP-1559 fees filled by the phone.
 - **Found: Safari can't store the connection.** Connecting from Safari fails with `DataError:
   Failed to store record in an IDBObjectStore: Evaluating the object store's key path did
   not yield a value` (WebKit's wording) when the SDK saves the connection (`IndexedDbStore.put`,
