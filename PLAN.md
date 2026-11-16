@@ -423,6 +423,17 @@ listed below while they exist.
   keyPath `relay`). The record does have `relay`; the suspect is WebKit's structured clone of
   the non-extractable Ed25519/X25519 `CryptoKey`s in it. Firefox stores it fine. To fix with
   the browser checks (6.x).
+- **Fix after 7.1 (Safari storage, 2026-11-16):** probed in Safari 27: Ed25519,
+  ECDSA and ECDH P-256 keys store and clone; an X25519 key doesn't (`structuredClone` throws
+  "Unable to deserialize data"; with out-of-line keys `put` succeeds and the key reads back
+  missing; with the SDK's keyPath store `put` fails with the DataError above). Wrapping it
+  under an AES-GCM key works there. The SDK now clones a test X25519 key once; where that
+  fails, `s` is generated extractable, wrapped (PKCS #8) under a non-extractable AES key and
+  stored sealed, and used through a non-extractable unwrapped copy (BLOX.md §9.6 step 5). A
+  record whose keys didn't survive storage loads as no connection. Checked with the SDK's own
+  backend and `IndexedDbStore` bundled into a page: Safari 27 saves, reloads, signs and agrees
+  (sealed `s`); Firefox keeps both keys non-extractable. Deno tests for the sealed path. Still
+  to do: the demo from iOS.
 
 - **Fix after 7.1 (flaky anvil tests):** about one run in five hung for the full 300 s
   request timeout. Two causes, both found with tracing:
@@ -483,7 +494,7 @@ listed below while they exist.
 1. **Android (5.2):** the app builds and the instrumented vectors test passes; run the §13.4
    device checks (StrongBox and TEE devices, fingerprint/face/PIN, screen-lock removal and
    restore).
-2. **Browser (6.x):** fix Safari's IndexedDB save (7.1 notes); run `sdk/js/demo` (`deno task demo`, then serve `demo/dist`) in Chrome, Firefox and
+2. **Browser (6.x):** connect from iOS (Safari's storage fix, 7.1 notes); run `sdk/js/demo` (`deno task demo`, then serve `demo/dist`) in Chrome, Firefox and
    Safari; check IndexedDB keys are non-extractable (`crypto.subtle.exportKey` fails), Web
    Locks across tabs, cancel on reload/`pagehide`; the one-dependency check in fresh Vite and
    Next.js apps.

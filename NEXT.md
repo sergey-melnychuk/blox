@@ -49,7 +49,8 @@ runbook; the relay is live at `relay.example.com`. Step-by-step status, notes an
 - [x] The modal (shadow root, request toast), `verifyConnection`
 - [x] EIP-1193 provider (§9.3 method and error tables) and the wagmi connector `@blox/sdk/wagmi`
 - [x] Deno test with `@wagmi/core` against the Rust relay, mock keystore and anvil; a wagmi demo page
-- [ ] Browser checks (IndexedDB, Web Locks, Safari: saving the connection fails there) and the one-dependency check in fresh Vite and Next.js apps
+- [x] Safari: saving the connection failed (WebKit can't store X25519 keys); `s` is now stored wrapped there (§9.6)
+- [ ] Browser checks (IndexedDB, Web Locks) and the one-dependency check in fresh Vite and Next.js apps
 
 ## M7: Deploy and release
 

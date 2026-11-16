@@ -196,7 +196,7 @@ public key: the inbox ID is the key itself, as unpadded base64url (43 characters
 | **A connected requester flooding the signer** | Fills the signer's inbox to push out other sites' requests | The relay keeps at most 4 messages per writer in an inbox (§8.4). The phone groups requests by connection (§10.6), and the user can disconnect the site. |
 | **QR observer** | Sees or photographs the connect QR | The ticket works once (§5.1). An attacker who wins the race connects their own phone: the user's phone is told the code was already used, and the site shows the attacker's account, not the user's. Nothing of the user's is signed. |
 | **Malicious requester** (a site, an app, or script injected into one) | Sends any request it wants over a connection, under any name | The keystore builds the transaction itself from the intent and its own chain data, and shows every field (§10.4, §10.5). The requester cannot set nonce, gas, fees or the endpoint. Dangerous kinds are refused, and risky calls get danger flags (§10.5). The name is shown as a claim. |
-| **Stolen connection** (the site's stored keys and token, via XSS or a leaked backend) | Sends requests as that connection until it ends | Every request still needs approval on the phone. In browsers the keys are non-extractable (§9.6), so injected script can use the connection only while it runs in the page and cannot carry it away. The app lists connections with their last request, and disconnecting revokes the token (§10.6). Connections expire after at most 90 days. |
+| **Stolen connection** (the site's stored keys and token, via XSS or a leaked backend) | Sends requests as that connection until it ends | Every request still needs approval on the phone. In browsers the keys are non-extractable (§9.6; in WebKit browsers `s` isn't, but alone it can't use the relay), so injected script can use the connection only while it runs in the page and cannot carry it away. The app lists connections with their last request, and disconnecting revokes the token (§10.6). Connections expire after at most 90 days. |
 | **Site impersonating another site** | Shows a QR code with someone else's name | The name cannot be verified (§3.3). The phone shows it as "claims to be", next to the decoded call and the destination address. |
 | **Requester steering the phone's network access** | Names a relay in the QR code | An unknown relay needs the user's consent before the phone connects (§10.3). Chain endpoints never come from requests. |
 | **Chain endpoint the user configured** | Lies about nonce, fees, gas estimate or balance; delays or drops broadcasts; sees the phone's IP and transactions | It cannot change what is signed: the phone shows the full transaction. The endpoint's host is on the review screen, and the user chose it (§10.3). |
@@ -877,6 +877,18 @@ to 90 days.
 4. **What the browser refuses.** `exportKey` on these keys throws `InvalidAccessError`, and so
    does `wrapKey` (it needs an extractable key). Script on the page can *use* the keys through
    the calls above but can never obtain their bytes. Other origins can't open the database at all.
+5. **WebKit (Safari, and every browser on iOS) can't store X25519 keys.** Its structured clone
+   of an X25519 `CryptoKey` fails (Safari 27: "Unable to deserialize data"), so IndexedDB
+   rejects the record (`DataError`). Ed25519 and AES keys store fine. The SDK tests this once,
+   by cloning a fresh X25519 key, and where it fails keeps `s` sealed:
+   - it generates `s` extractable, wraps it (PKCS #8, AES-GCM) under a new non-extractable AES
+     key, and stores `{ aes, iv, wrapped }` in place of `s`;
+   - it uses `s` through a non-extractable copy unwrapped from that, after every load too.
+
+   `S` stays as in step 1. The cost: script on the page can unwrap `s` as extractable and copy
+   it. Reading the inbox and posting both need `S` (§4.4), so a copied `s` doesn't carry the
+   connection away. With the relay's stored envelopes as well, it opens this connection's
+   responses; requests stay closed (they need the ephemeral key or `k`).
 
 **What it protects, and what it doesn't:**
 - **Protected:** script injected into the site (XSS, a compromised third-party script) can't
@@ -892,6 +904,7 @@ to 90 days.
     files.
   - **Browser extensions** that can inject script into the site's pages can use the connection
     as page script can.
+  - **In WebKit browsers, `s`** (step 5): page script can copy it out.
 
 **Lifetime:**
 - Clearing the site's data deletes the connection, and the user connects again. The SDK calls

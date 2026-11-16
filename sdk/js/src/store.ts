@@ -2,10 +2,11 @@
  * Where the connection lives between page loads (BLOX.md §9.6).
  *
  * In browsers, [IndexedDbStore] keeps the keys as non-extractable `CryptoKey` objects
- * (structured clone keeps the flag and the usages), next to the token and the account.
+ * (structured clone keeps the flag and the usages), next to the token and the account. Where the
+ * browser can't store X25519 keys (WebKit), `kem` is sealed (keys.ts).
  */
 
-import type { StoredKey } from "./keys.ts";
+import { type StoredKey, storedKeyOk } from "./keys.ts";
 
 export interface StoredConnection {
   relay: string;
@@ -70,8 +71,10 @@ export class IndexedDbStore implements ConnectionStore {
     });
   }
 
+  /** A record whose keys didn't survive storage counts as no connection. */
   async load(relay: string) {
-    return (await this.tx("readonly", (s) => s.get(relay))) ?? null;
+    const c: StoredConnection | undefined = await this.tx("readonly", (s) => s.get(relay));
+    return c && storedKeyOk(c.sig) && storedKeyOk(c.kem) ? c : null;
   }
   async save(c: StoredConnection) {
     await this.tx("readwrite", (s) => s.put(c));
