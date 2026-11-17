@@ -432,8 +432,8 @@ listed below while they exist.
   stored sealed, and used through a non-extractable unwrapped copy (BLOX.md §9.6 step 5). A
   record whose keys didn't survive storage loads as no connection. Checked with the SDK's own
   backend and `IndexedDbStore` bundled into a page: Safari 27 saves, reloads, signs and agrees
-  (sealed `s`); Firefox keeps both keys non-extractable. Deno tests for the sealed path. Still
-  to do: the demo from iOS.
+  (sealed `s`); Firefox keeps both keys non-extractable. Deno tests for the sealed path.
+  Deployed to `relay.example.com/demo/` (2026-11-17); Safari on iOS connected to a second test phone (TEE, no StrongBox) and it worked.
 
 - **Fix after 7.1 (flaky anvil tests):** about one run in five hung for the full 300 s
   request timeout. Two causes, both found with tracing:
@@ -494,7 +494,7 @@ listed below while they exist.
 1. **Android (5.2):** the app builds and the instrumented vectors test passes; run the §13.4
    device checks (StrongBox and TEE devices, fingerprint/face/PIN, screen-lock removal and
    restore).
-2. **Browser (6.x):** connect from iOS (Safari's storage fix, 7.1 notes); run `sdk/js/demo` (`deno task demo`, then serve `demo/dist`) in Chrome, Firefox and
+2. **Browser (6.x):** run `sdk/js/demo` (`deno task demo`, then serve `demo/dist`) in Chrome, Firefox and
    Safari; check IndexedDB keys are non-extractable (`crypto.subtle.exportKey` fails), Web
    Locks across tabs, cancel on reload/`pagehide`; the one-dependency check in fresh Vite and
    Next.js apps.
