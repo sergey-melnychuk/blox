@@ -1203,8 +1203,9 @@ the share sheet. It is never uploaded. Removing a signer keeps its audit entries
   balance changes, token transfers and approvals, reverts.
 - Results appear next to the decoded fields, after them. Approval never waits for simulation,
   and "not simulated" is shown if it doesn't finish.
-- Licensing must be settled first: yevm is PolyForm Noncommercial, which conflicts with the
-  app's MIT license and with F-Droid (§10.1).
+- Licensing: yevm's earlier license, PolyForm Noncommercial, conflicts with the app's license
+  (MIT OR Apache-2.0) and with F-Droid (§10.1). yevm is relicensed to MIT OR Apache-2.0, which
+  settles it once that is published.
 - Simulation covers transactions only. Typed data still relies on danger flags.
 
 ### 12.4 iOS app

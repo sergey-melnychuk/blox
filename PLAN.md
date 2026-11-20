@@ -159,6 +159,11 @@ listed below while they exist.
 - `deploy/Dockerfile`, `deploy/Caddyfile`, README per §14.2.
 - **Deploying `relay.example.com`** `[x]` (2026-11-13, by the user from DEPLOY.md).
 - **The release key and reproducible signed APKs** `[!]`: the user's.
+- **Open source** `[~]` (2026-11-20): MIT OR Apache-2.0 (`LICENSE-MIT`, `LICENSE-APACHE`,
+  the crates and the SDK's `package.json`), `SECURITY.md` (private reports through GitHub),
+  and the README says it isn't audited and doesn't take outside code. The git history was
+  checked for keys, RPC keys, private addresses and other identities: none. Making the
+  repository public and turning on private vulnerability reporting are the user's.
 
 ---
 
@@ -500,5 +505,7 @@ listed below while they exist.
    Next.js apps.
 3. **Release (7):** the relay is deployed at `relay.example.com` (run the phone through it);
    create the offline release key, reproducible signed APKs with published checksums.
-4. **Open product question:** the Permit2 danger flag makes every Uniswap swap need a typed
+4. **Open source (7.1):** make the repository public and turn on private vulnerability
+   reporting (Settings → Code security), which SECURITY.md points to.
+5. **Open product question:** the Permit2 danger flag makes every Uniswap swap need a typed
    confirmation; v2 per-connection policies could relax it (BLOX.md §12.2).

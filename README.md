@@ -11,9 +11,14 @@ everything is end-to-end encrypted, and it accepts writes only from connected pa
 
 The full design is in [BLOX.md](BLOX.md). The implementation status is in [PLAN.md](PLAN.md).
 
+> **Not audited.** Blox handles keys and signing but has had no security audit yet. Use it on
+> test networks with test funds only. Report vulnerabilities privately: [SECURITY.md](SECURITY.md).
+>
 > **Status:** the protocol, relay, Rust requester, mock keystore and web SDK are implemented
-> and tested (including against anvil and through `@wagmi/core`). The Android app builds
-> but has not been checked on a device yet, and there is no release yet.
+> and tested (including against anvil and through `@wagmi/core`). The Android app has sent
+> on Sepolia through the public relay from the demo site in Firefox, and connected from
+> Safari on iOS; the full device checks (BLOX.md §13.4) are pending, and there is no release
+> yet.
 
 | Part | Where |
 |---|---|
@@ -146,4 +151,9 @@ cargo test --workspace                     # Rust; the anvil tests skip if anvil
 cd sdk/js && deno task test                # TypeScript SDK (build the relay and mock keystore first)
 ```
 
-Licensed under MIT.
+## License
+
+Licensed under either of [MIT](LICENSE-MIT) or [Apache-2.0](LICENSE-APACHE), at your option.
+
+Blox does not accept outside code contributions. Bug reports and feature requests are welcome
+as issues; security problems go through [SECURITY.md](SECURITY.md).

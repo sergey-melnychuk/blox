@@ -2,7 +2,7 @@
   "name": "@blox/sdk",
   "version": "0.1.0",
   "description": "Blox requester SDK: connect a site to a phone keystore, send intent, get signatures and hashes back.",
-  "license": "MIT",
+  "license": "MIT OR Apache-2.0",
   "type": "module",
   "exports": {
     ".": "./dist/index.js",
