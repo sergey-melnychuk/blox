@@ -101,7 +101,7 @@ fn generate() -> Value {
     let f = fixture();
     let s = party(&f.s_sig, &f.s_kem);
     let k = party(&f.k_sig, &f.k_kem);
-    let relay = relay_url::DEFAULT_RELAY;
+    let relay = "https://relay.example.com";
 
     let body = TokenBody {
         requester: s,
@@ -209,8 +209,8 @@ fn generate() -> Value {
             "authorization": reqsig::sign(&f.s_sig, "POST", &inbox_path, ISSUED, b"hello")
         },
         "relay_urls": [
-            ["https://relay.example.com", "https://relay.example.com", ""],
-            ["HTTPS://Relay.Example.COM:443/", "https://relay.example.com", ""],
+            ["https://relay.example.com", "https://relay.example.com", "relay.example.com"],
+            ["HTTPS://Relay.Example.COM:443/", "https://relay.example.com", "relay.example.com"],
             ["https://r.example.org:8443/relay/", "https://r.example.org:8443/relay", "r.example.org:8443/relay"],
             ["http://my-computer.lan:8080", "http://my-computer.lan:8080", "http://my-computer.lan:8080"]
         ],

@@ -279,7 +279,10 @@ pub(crate) mod tests {
         assert_eq!(t.id(), id, "the id covers the body only");
         let full = Token::from_bytes(&t.to_bytes()).unwrap();
         assert_eq!(full, t);
-        assert_eq!(full.to_bytes().len(), 146 + 21 + 128);
+        assert_eq!(
+            full.to_bytes().len(),
+            146 + "https://relay.example.com".len() + 128
+        );
     }
 
     #[test]

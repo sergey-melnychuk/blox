@@ -3,7 +3,7 @@
  *
  * ```ts
  * import { Blox } from "@blox/sdk";
- * const blox = new Blox({ name: "Example" });
+ * const blox = new Blox({ name: "Example", relay: "https://relay.example.com" });
  * const { account } = await blox.connect();
  * const { txHash } = await blox.send({ chain: 8453, to: "0x…", value: 10n ** 16n });
  * ```
@@ -15,7 +15,6 @@ export { IndexedDbStore, MemoryStore } from "./store.ts";
 export type { ConnectionStore, StoredConnection } from "./store.ts";
 export { rawBackend, webcryptoBackend } from "./keys.ts";
 export type { Backend } from "./keys.ts";
-export { DEFAULT_RELAY } from "./relayUrl.ts";
 export { BloxProvider, createProvider, ProviderRpcError } from "./provider.ts";
 export type { ProviderOptions } from "./provider.ts";
 export { qrSvg } from "./qr.ts";

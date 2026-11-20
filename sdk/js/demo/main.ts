@@ -17,13 +17,15 @@ import { blox } from "@blox/sdk/wagmi";
 
 // Query options, for local runs (README.md):
 //   ?anvil[=http://localhost:8545]   anvil instead of Sepolia
-//   ?relay=http://localhost:8080     another relay (default: https://relay.example.com)
+//   ?relay=http://localhost:8080     another relay (default: the site serving this page)
 //   ?mock                            print the QR string in the log, for the mock keystore
 const q = new URLSearchParams(location.search);
 const anvil = q.has("anvil");
 const chain: Chain = anvil ? foundry : sepolia;
 const rpc = anvil ? q.get("anvil") || "http://localhost:8545" : "https://ethereum-sepolia-rpc.publicnode.com";
 const explorer = anvil ? undefined : "https://sepolia.etherscan.io";
+// DEPLOY.md serves the demo from the relay's own site, so that is the default relay.
+const relay = q.get("relay") || location.origin;
 
 const $ = <T extends HTMLElement = HTMLInputElement>(id: string) => document.getElementById(id) as T;
 
@@ -47,7 +49,7 @@ const config = createConfig({
   connectors: [
     blox({
       name: "Blox demo",
-      ...(q.get("relay") ? { relay: q.get("relay")! } : {}),
+      relay,
       ...(q.has("mock") ? { onQr: (uri: string | null) => uri && log(uri) } : {}),
     }),
   ],

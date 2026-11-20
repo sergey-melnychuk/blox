@@ -19,7 +19,7 @@ const ICON = "data:image/svg+xml;base64," +
 
 type Address = `0x${string}`;
 
-export function blox(opts: Omit<BloxOptions, "relay"> & { relay?: string }): CreateConnectorFn {
+export function blox(opts: BloxOptions): CreateConnectorFn {
   return ((config) => {
     let provider: BloxProvider | undefined;
     const chains = config.chains.map((c) => c.id);

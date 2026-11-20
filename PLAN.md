@@ -157,8 +157,19 @@ listed below while they exist.
 
 ### 7.1 Deployment files and README  `[x]`
 - `deploy/Dockerfile`, `deploy/Caddyfile`, README per §14.2.
-- **Deploying `relay.example.com`** `[x]` (2026-11-13, by the user from DEPLOY.md).
+- **Deploying a public relay** `[x]` (2026-11-13, by the user from DEPLOY.md).
 - **The release key and reproducible signed APKs** `[!]`: the user's.
+- **No built-in relay, no addresses** `[x]` (2026-11-20): the history was rewritten so that no
+  host name, IP address (loopback included), phone model or server detail of the
+  development setup appears in any commit. The default relay is gone: the QR code's relay
+  field always names the relay (protocol test vectors regenerated), the SDK's `relay` option
+  is required, the app's relay list starts empty (a QR code's relay is allowed once, §10.3),
+  and the demo defaults to the site that serves it. `relay.example.com` is the placeholder in
+  docs and tests. `BLOX_LISTEN` takes a host name (`localhost:8080`, the default) or `:port`
+  for every interface (the Dockerfile). RUN.md and `scripts/local-services.sh --phone` reach
+  the phone over USB with `adb reverse` instead of a LAN address (not yet run on a phone).
+  Phones that were set up with the old built-in relay need it added in Settings, or a new QR
+  code.
 - **Open source** `[~]` (2026-11-20): MIT OR Apache-2.0 (`LICENSE-MIT`, `LICENSE-APACHE`,
   the crates and the SDK's `package.json`), `SECURITY.md` (private reports through GitHub),
   and the README says it isn't audited and doesn't take outside code. The git history was
@@ -280,7 +291,7 @@ listed below while they exist.
   - `vault/SignerVault`: one wrapping key per signer (`blox.seed.wrap.v1.<id>`), transport
     keys under `blox.transport.wrap.v1` (no authentication), restore for listed signers,
     removal deletes the key first; migrates the earlier single seed as signer "Main".
-  - `store/Stores.kt`: `Settings` (endpoints, relays with the default always listed),
+  - `store/Stores.kt`: `Settings` (endpoints, relays),
     `Connections`, `Answers` (10 minutes, `commit()` so an answer is on disk before it is
     sent or broadcast), `AuditLog` (JSON lines, exported as text through the share sheet —
     not Room/SQLite as §10.9 suggests).
@@ -384,7 +395,7 @@ listed below while they exist.
   the mock keystore. Type-checked with Deno against wagmi 3.6.9 / viem 2.57.17; not run
   (no Node or browser here). Packaging (`npm run build` with `tsc`) is also untested here.
 - **6.4, Sepolia demo (2026-11-13):** the page now targets Sepolia through the public relay
-  for hosting at `relay.example.com/demo/` (DEPLOY.md): connect, send (empty "To" sends to
+  for hosting at `/demo/` on the relay's site (DEPLOY.md): connect, send (empty "To" sends to
   yourself; amount in ETH), sign message, typed data, disconnect, with Etherscan links.
   `?anvil[=url]`, `?relay=` and `?mock` keep local runs. Built with `deno task demo`
   (`deno bundle` of `main.ts` with the SDK mapped in `deno.json`, then `index.html` copied):
@@ -394,7 +405,7 @@ listed below while they exist.
 - **7.1:** `deploy/Dockerfile` (multi-stage, `rust:1-slim-bookworm` → distroless `cc` nonroot;
   pin by digest for production), `deploy/Caddyfile` (`flush_interval -1`, no access log),
   `.dockerignore`, and `README.md` per §14.2 with a status note. The image was not built here
-  (pulling and running base images wasn't attempted). Deploying `relay.example.com`, the release
+  (pulling and running base images wasn't attempted). Deploying a public relay, the release
   key and signed reproducible APKs remain the user's.
 - **7.1, systemd runbook:** `DEPLOY.md` (server, static build with `cargo zigbuild` for
   x86-64 and arm64 musl, install, Caddy from its apt repository, journal rotation with a
@@ -418,7 +429,7 @@ listed below while they exist.
   musl, whose allocator is slow under multithreaded load. The site keeps a Caddy access log
   (the user's choice); the global log exclusion and the journald drop-in weren't installed.
   Still to do: the syscall filter under real traffic.
-- **7.1, phone on Sepolia (2026-11-13):** the hosted demo (`relay.example.com/demo/`, Firefox
+- **7.1, phone on Sepolia (2026-11-13):** the hosted demo (`/demo/` on the public relay, Firefox
   160) → the public relay → the user's phone (TEE,
   biometric approval) → Sepolia through the phone's own endpoint. The transaction: status 1, to itself, 0.0001 ETH, nonce 0, gas limit 14,400 for 12,000 used (+20%),
   EIP-1559 fees filled by the phone.
@@ -438,7 +449,7 @@ listed below while they exist.
   record whose keys didn't survive storage loads as no connection. Checked with the SDK's own
   backend and `IndexedDbStore` bundled into a page: Safari 27 saves, reloads, signs and agrees
   (sealed `s`); Firefox keeps both keys non-extractable. Deno tests for the sealed path.
-  Deployed to `relay.example.com/demo/` (2026-11-17); Safari on iOS connected to a second test phone (TEE, no StrongBox) and it worked.
+  Deployed to the public relay's `/demo/` (2026-11-17); Safari on iOS connected to a second test phone (TEE, no StrongBox) and it worked.
 
 - **Fix after 7.1 (flaky anvil tests):** about one run in five hung for the full 300 s
   request timeout. Two causes, both found with tracing:
@@ -503,7 +514,7 @@ listed below while they exist.
    Safari; check IndexedDB keys are non-extractable (`crypto.subtle.exportKey` fails), Web
    Locks across tabs, cancel on reload/`pagehide`; the one-dependency check in fresh Vite and
    Next.js apps.
-3. **Release (7):** the relay is deployed at `relay.example.com` (run the phone through it);
+3. **Release (7):** a public relay is deployed (run the phone through it);
    create the offline release key, reproducible signed APKs with published checksums.
 4. **Open source (7.1):** make the repository public and turn on private vulnerability
    reporting (Settings → Code security), which SECURITY.md points to.

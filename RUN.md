@@ -83,21 +83,26 @@ The phone needs a screen lock (PIN, pattern or password) before you can add a si
 
 ### 3. Start a chain and a relay the phone can reach
 
-The phone must be on the same Wi-Fi as the computer. Find the computer's LAN address
-(`ipconfig getifaddr en0` on macOS) and use it in place of `my-computer.lan` below.
+The phone reaches the computer over USB: `adb reverse` makes the phone's `localhost:8545`
+and `localhost:8080` the computer's, so nothing has to listen on the network.
 
 ```sh
-anvil --host any-address
+anvil
 ```
 ```sh
-BLOX_LISTEN=:8080 cargo run -p blox-relay
+cargo run -p blox-relay                       # listens on localhost:8080
+```
+```sh
+adb reverse tcp:8545 tcp:8545 && adb reverse tcp:8080 tcp:8080
 ```
 
-Or both at once, without the mock keystore (the app is the keystore):
+Or all three at once, without the mock keystore (the app is the keystore):
 
 ```sh
-BLOX_HOST=any-address scripts/local-services.sh --no-keystore
+scripts/local-services.sh --phone
 ```
+
+The forwarding lasts until the phone is unplugged; run the `adb reverse` line again after that.
 
 Debug builds of the app accept plain-HTTP relays and endpoints; release builds refuse them.
 
@@ -107,18 +112,18 @@ Debug builds of the app accept plain-HTTP relays and endpoints; release builds r
    (`test test test test test test test test test test test junk`), whose first account
    `0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266` anvil funds. **Never use this phrase for
    anything real.**
-2. **Add an endpoint** in Settings: chain `31337`, URL `http://my-computer.lan:8545`. The app
+2. **Add an endpoint** in Settings: chain `31337`, URL `http://localhost:8545`. The app
    checks it with `eth_chainId`.
 
 ### 5. Connect and send
 
 ```sh
-cargo run -p blox-client --example send -- --relay http://my-computer.lan:8080 \
+cargo run -p blox-client --example send -- --relay http://localhost:8080 \
     --chain 31337 --to 0x70997970C51812dc3A010C7d01b50e0d17dc79C8 --value 1000000000000000
 ```
 
 A QR code appears in the terminal. In the app, tap **Scan** and scan it. The first time,
-the app asks whether to use the relay `my-computer.lan:8080`. Choose the signer and how long to
+the app asks whether to use the relay `localhost:8080`. Choose the signer and how long to
 remember the site, and approve with your fingerprint or PIN. The example prints
 `Connected as …` and sends the request: it waits in the app's request list (the relay keeps
 it for 5 minutes). Review it, tap **Approve**, and the example prints the transaction hash.

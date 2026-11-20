@@ -93,7 +93,9 @@ async fn relay_logs_leak_nothing() {
         ks.signer(0).transport.inbox().to_string(),
         offer.ticket.to_string(),
         blox_proto::b64::encode(offer.requester.kem.0),
-        "localhost".to_owned(),
+        // The client's address, which a relay behind a proxy must not log.
+        std::net::Ipv4Addr::LOCALHOST.to_string(),
+        std::net::Ipv6Addr::LOCALHOST.to_string(),
     ];
     for s in secrets {
         assert!(!logs.contains(&s), "log contains {s}:\n{logs}");

@@ -1,30 +1,31 @@
 #!/usr/bin/env bash
 # Runs a local Blox setup for end-to-end tries without Docker or TLS (RUN.md):
 # anvil, the relay over plain HTTP, and the mock keystore (unless --no-keystore, when the
-# Android app is the keystore). Ctrl-C stops everything.
+# Android app is the keystore). Everything listens on localhost. Ctrl-C stops everything.
 #
-#   scripts/local-services.sh                  # localhost, mock keystore
-#   BLOX_HOST=any-address scripts/local-services.sh --no-keystore   # the phone on the LAN
+#   scripts/local-services.sh                  # mock keystore
+#   scripts/local-services.sh --phone          # the app over USB: --no-keystore plus adb reverse
 #
 # Give the mock keystore a QR string from a requester:
 #   echo 'BLOX:…' > target/local/keystore.in
 #
-# Environment: BLOX_HOST (localhost), ANVIL_PORT (8545), RELAY_PORT (8080),
+# Environment: ANVIL_PORT (8545), RELAY_PORT (8080),
 # BLOX_LOCAL_DIR (target/local), ANVIL (anvil on the PATH or ~/.foundry/bin/anvil),
 # BLOX_LOG (info). Logs and the keystore's output go to BLOX_LOCAL_DIR.
 set -euo pipefail
 
 keystore=1
+phone=0
 for a in "$@"; do
     case "$a" in
         --no-keystore) keystore=0 ;;
-        -h | --help) sed -n '2,16p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+        --phone) keystore=0; phone=1 ;;
+        -h | --help) sed -n '2,14p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
         *) echo "unknown argument: $a" >&2; exit 2 ;;
     esac
 done
 
 root=$(cd "$(dirname "$0")/.." && pwd)
-host=${BLOX_HOST:-localhost}
 anvil_port=${ANVIL_PORT:-8545}
 relay_port=${RELAY_PORT:-8080}
 dir=${BLOX_LOCAL_DIR:-$root/target/local}
@@ -46,20 +47,13 @@ cleanup() {
 trap cleanup EXIT
 trap 'cleanup; exit 0' INT TERM
 
-"$anvil" --host "$host" --port "$anvil_port" > "$dir/anvil.log" 2>&1 &
+"$anvil" --port "$anvil_port" > "$dir/anvil.log" 2>&1 &
 pids+=($!)
-BLOX_LISTEN="$host:$relay_port" BLOX_LOG=${BLOX_LOG:-info} "$bin/blox-relay" > "$dir/relay.log" 2>&1 &
+BLOX_LISTEN="localhost:$relay_port" BLOX_LOG=${BLOX_LOG:-info} "$bin/blox-relay" > "$dir/relay.log" 2>&1 &
 pids+=($!)
 
-# The address requesters and the keystore use: localhost, or this machine's LAN address.
-if [ "$host" = any-address ]; then
-    lan=$(ipconfig getifaddr en0 2>/dev/null || hostname -I 2>/dev/null | awk '{print $1}' || true)
-    shown=${lan:-$host}
-else
-    shown=$host
-fi
 anvil_url=http://localhost:$anvil_port
-relay_url=http://$shown:$relay_port
+relay_url=http://localhost:$relay_port
 
 wait_for() { # what, command…
     local what=$1; shift
@@ -81,8 +75,17 @@ if [ "$keystore" = 1 ]; then
     wait_for "mock keystore" grep -q ready "$dir/keystore.log"
 fi
 
-echo "anvil   http://$shown:$anvil_port  (chain 31337)"
+if [ "$phone" = 1 ]; then
+    # The phone's localhost ports become this machine's, over USB.
+    adb reverse "tcp:$anvil_port" "tcp:$anvil_port" > /dev/null
+    adb reverse "tcp:$relay_port" "tcp:$relay_port" > /dev/null
+fi
+
+echo "anvil   $anvil_url  (chain 31337)"
 echo "relay   $relay_url"
+if [ "$phone" = 1 ]; then
+    echo "phone   adb reverse done; in the app add the endpoint $anvil_url (chain 31337)"
+fi
 if [ "$keystore" = 1 ]; then
     echo "keystore  echo 'BLOX:…' > $dir/keystore.in   (output: $dir/keystore.log)"
 fi

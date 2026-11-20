@@ -20,5 +20,4 @@ unprotected (§9.6).
 
 Out of scope: the limits BLOX.md already states, such as what the relay, connected sites and
 the chosen endpoint learn and phishing pages that show a real site's QR code (§3.3), what is
-trusted (§3.4) or out of scope (§3.5), and denial of service against the public relay at
-`relay.example.com`.
+trusted (§3.4) or out of scope (§3.5), and denial of service against a public relay.

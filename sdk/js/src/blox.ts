@@ -9,7 +9,7 @@ import { equal, own, randomBytes, toHex } from "./bytes.ts";
 import { checkResponse, checksum, type TypedData, verifyStatement } from "./evm.ts";
 import { type Backend, chooseBackend, type KemKey, kemKeyFrom, type SigKey, sigKeyFrom, UnsupportedBrowser } from "./keys.ts";
 import { type Delivery, RelayClient, RelayError } from "./relay.ts";
-import { DEFAULT_RELAY, normalizeRelay } from "./relayUrl.ts";
+import { normalizeRelay } from "./relayUrl.ts";
 import { type ConnectionStore, defaultStore, type StoredConnection } from "./store.ts";
 import { createUi } from "./ui.ts";
 import {
@@ -66,7 +66,8 @@ export type Status =
 export interface BloxOptions {
   /** Shown on the phone as a claim (§3.3). */
   name: string;
-  relay?: string;
+  /** The relay to use, e.g. `https://relay.example.com` (DEPLOY.md runs one). */
+  relay: string;
   /** Sent with requests as `origin.url`; defaults to `location.origin` in browsers. */
   url?: string;
   storage?: ConnectionStore;
@@ -121,7 +122,8 @@ export class Blox {
   private onStatus: (s: Status) => void;
 
   constructor(private readonly opts: BloxOptions) {
-    this.relayUrl = normalizeRelay(opts.relay ?? DEFAULT_RELAY);
+    if (!opts.relay) throw new Error("Blox: the relay option is required");
+    this.relayUrl = normalizeRelay(opts.relay);
     this.relay = new RelayClient(this.relayUrl, opts.localClockSkew ?? 0);
     this.store = opts.storage ?? defaultStore();
     const browser = typeof (globalThis as { document?: unknown }).document !== "undefined";

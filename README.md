@@ -41,7 +41,7 @@ import { blox } from "@blox/sdk/wagmi";
 
 export const config = createConfig({
   chains: [mainnet, base],
-  connectors: [injected(), blox({ name: "Example" })],
+  connectors: [injected(), blox({ name: "Example", relay: "https://relay.example.com" })],
   transports: { [mainnet.id]: http(), [base.id]: http() },
 });
 ```
@@ -51,13 +51,13 @@ usual. What reaches the phone is intent only: a nonce, gas or fees the site sets
 and the phone fills its own. Reads go to the site's own RPC.
 
 **Other stacks** wrap the EIP-1193 provider:
-`new BrowserProvider(createProvider({ name: "Example" }))`.
+`new BrowserProvider(createProvider({ name: "Example", relay: "https://relay.example.com" }))`.
 
 **Directly:**
 
 ```ts
 import { Blox } from "@blox/sdk";
-const blox = new Blox({ name: "Example" });
+const blox = new Blox({ name: "Example", relay: "https://relay.example.com" });
 const { account } = await blox.connect();                       // QR code once
 const { txHash } = await blox.send({ chain: 8453, to: "0x…", value: 10n ** 16n, data: "0x…" });
 const { raw } = await blox.signTransaction({ chain: 8453, to: "0x…" });   // you broadcast

@@ -8,8 +8,6 @@ import org.json.JSONObject
 import uniffi.blox_ffi.ConnectionRecord
 import uniffi.blox_ffi.normalizeRelayUrl
 
-const val DEFAULT_RELAY = "https://relay.example.com"
-
 data class EndpointConfig(val chainId: Long, val name: String, val url: String)
 
 /**
@@ -43,10 +41,10 @@ class Settings(context: Context) {
         prefs.edit().putString("endpoints", arr.toString()).apply()
     }
 
-    /** Normalized relay URLs the user allowed. The default relay is always listed. */
+    /** Normalized relay URLs the user allowed (none built in). */
     fun relays(): List<String> {
         val arr = JSONArray(prefs.getString("relays", "[]"))
-        return listOf(DEFAULT_RELAY) + List(arr.length()) { arr.getString(it) }.filter { it != DEFAULT_RELAY }
+        return List(arr.length()) { arr.getString(it) }
     }
 
     fun isKnownRelay(url: String): Boolean = relays().contains(url)
@@ -55,13 +53,13 @@ class Settings(context: Context) {
         val n = normalizeRelayUrl(url)
         if (isKnownRelay(n)) return
         val arr = JSONArray()
-        (relays().drop(1) + n).forEach { arr.put(it) }
+        (relays() + n).forEach { arr.put(it) }
         prefs.edit().putString("relays", arr.toString()).apply()
     }
 
     fun removeRelay(url: String) {
         val arr = JSONArray()
-        relays().drop(1).filter { it != url }.forEach { arr.put(it) }
+        relays().filter { it != url }.forEach { arr.put(it) }
         prefs.edit().putString("relays", arr.toString()).apply()
     }
 }

@@ -1,7 +1,5 @@
 /** Relay URLs: normalization (BLOX.md §4.3) and the QR code's relay field (§5.1). */
 
-export const DEFAULT_RELAY = "https://relay.example.com";
-
 export function normalizeRelay(url: string): string {
   const m = /^([A-Za-z]+):\/\/(.*)$/.exec(url);
   if (!m) throw new Error("relay url");
@@ -38,7 +36,7 @@ export function normalizeRelay(url: string): string {
 }
 
 export function toQrField(normalized: string): string {
-  return normalized === DEFAULT_RELAY ? "" : normalized.startsWith("https://") ? normalized.slice(8) : normalized;
+  return normalized.startsWith("https://") ? normalized.slice(8) : normalized;
 }
 
 export function relayHost(normalized: string): string {

@@ -25,7 +25,6 @@ import uniffi.blox_ffi.relayHost
 import wtf.oxff.blox.BloxApp
 import wtf.oxff.blox.BuildConfig
 import wtf.oxff.blox.relay.HttpEndpoint
-import wtf.oxff.blox.store.DEFAULT_RELAY
 import wtf.oxff.blox.store.EndpointConfig
 
 /** Chain endpoints and relays (§10.3), and the audit log export (§10.9). */
@@ -111,17 +110,13 @@ fun SettingsScreen(app: BloxApp, onBack: () -> Unit) {
                 Item(
                     relayHost(r),
                     supporting = null,
-                    trailing = if (r != DEFAULT_RELAY) {
-                        {
-                            IconButton(onClick = {
-                                scope.launch {
-                                    app.keystore.removeRelay(r)
-                                    refresh++
-                                }
-                            }) { Icon(Icons.Filled.Close, contentDescription = "Remove ${relayHost(r)}") }
-                        }
-                    } else {
-                        null
+                    trailing = {
+                        IconButton(onClick = {
+                            scope.launch {
+                                app.keystore.removeRelay(r)
+                                refresh++
+                            }
+                        }) { Icon(Icons.Filled.Close, contentDescription = "Remove ${relayHost(r)}") }
                     },
                 )
             }

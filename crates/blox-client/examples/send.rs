@@ -30,7 +30,7 @@ fn flag(name: &str) -> bool {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let relay = arg("--relay").unwrap_or_else(|| "https://relay.example.com".into());
+    let relay = arg("--relay").ok_or("--relay <url> is required")?;
     let store = arg("--store").unwrap_or_else(|| "blox-example.json".into());
     let print_uri = flag("--print-uri");
     let on_qr = Arc::new(move |uri: &str| {

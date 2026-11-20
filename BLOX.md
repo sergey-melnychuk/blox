@@ -276,7 +276,7 @@ token_id = SHA-256("blox/v1/token" ‖ body)
 - `expires_at − issued_at` is at most 90 days.
 - **Normalized relay URL:** the QR code's relay field resolved as in §5.1, then lowercase
   scheme and host, no default port (443 for `https`, 80 for `http`), no trailing slash, no query
-  or fragment. For the default relay: `https://relay.example.com`. The two parties check it; the
+  or fragment, for example `https://relay.example.com`. The two parties check it; the
   relay does not.
 - The token is not secret: possessing it lets no one write, because the relay also needs a
   request signature from a party (§4.4).
@@ -371,14 +371,13 @@ Triggered by `connect()`, or by a request made while the requester has no connec
    uri     = "BLOX:" base45(payload)                       (Base45: RFC 9285)
    payload = version(1) ‖ S(32) ‖ s(32) ‖ ticket(16) ‖ psk(32)
            ‖ relay_len(1) ‖ relay ‖ label_len(1) ‖ label
-   relay   = ""                → the default relay https://relay.example.com
-             "host[:port][/p]" → https://host[:port][/p]
+   relay   = "host[:port][/p]" → https://host[:port][/p]
              "http://…"        → as written (debug / LAN only; release apps refuse it)
    label   = UTF-8, at most 32 bytes (truncated on a character boundary)
    ```
    `label` is the requester's `name` from the SDK configuration. It is a claim (§3.3). Base45
    uses only QR's alphanumeric characters, so the whole URI is encoded in alphanumeric mode:
-   about 190 characters and a version-8 QR code (49×49 modules) for a typical label, at most version 10.
+   about 215 characters with a short relay host and a version-8 QR code (49×49 modules) for a typical label, at most version 10.
 5. Show the QR code: the SDK's modal in a browser (§9.4), or the integrator's own UI through
    `onQr`, with the name and `Waiting for phone… (120 s)`. The QR code is meant **only for the
    app's own scanner** (§10.7). If no valid `bind` arrives within 120 s, fail with `no_signer`.
@@ -735,13 +734,13 @@ reconnecting on page load all go through the connector (§9.3).
 **Other stacks** (ethers, web3-react, plain viem) wrap the provider:
 ```ts
 import { createProvider } from "@blox/sdk";
-const provider = new BrowserProvider(createProvider({ name: "Example", transports: { 1: "https://…" } }));
+const provider = new BrowserProvider(createProvider({ name: "Example", relay: "https://relay.example.com", transports: { 1: "https://…" } }));
 ```
 
 **Sites that want the intent API directly:**
 ```ts
 import { Blox } from "@blox/sdk";
-const blox = new Blox({ name: "Example" });       // relay defaults to https://relay.example.com; loads a stored connection
+const blox = new Blox({ name: "Example", relay: "https://relay.example.com" });   // loads a stored connection
 const { account } = await blox.connect();          // QR once; returns at once if already connected
 const { txHash }        = await blox.send({ chain: 8453, to: "0x…", value: 10n ** 16n, data: "0x…" });
 const { raw, txHash }   = await blox.signTransaction({ chain: 8453, to: "0x…", data: "0x…" });
@@ -1024,7 +1023,7 @@ processes sharing one stored connection are not supported.
 - **Chain endpoints:** a settings screen lists `(chain id, name, URL)`. Adding one calls
   `eth_chainId` on it and refuses a mismatch. The MVP ships with none; the user adds the chains
   they use.
-- **Relays:** the default relay is on the list. When a QR code names a relay that is not on the
+- **Relays:** the list starts empty; there is no built-in relay. When a QR code names a relay that is not on the
   list, the app shows its host and asks "Use this relay?". Allowing adds it to the list; declining
   ends the connect before any connection to the relay is made. Removing a relay ends the
   connections that use it.
@@ -1317,7 +1316,7 @@ that need `anvil` skip with a clear message if it is missing.
 4. **M4 — requests (Rust):** the messages of §6; filling, sending and `sign_tx` in `blox-evm`; the requester's calls and checks; the mock keystore with an anvil endpoint and two signers. The §13.1 gates that don't need a phone or a browser pass against anvil.
 5. **M5 — Android:** signer management (add, remove, view phrase), transport keys, connect screen, connection list, reading inboxes, endpoint and relay settings, filling and sending through `ChainRpc`, the review screen. The same gates from a real device.
 6. **M6 — web SDK:** `@blox/sdk` on WebCrypto with non-extractable keys in IndexedDB, the modal, the EIP-1193 provider and the wagmi connector, a wagmi demo page.
-7. **M7 — release:** deploy the relay at `relay.example.com`, Docker/Caddy, README, reproducible signed release builds.
+7. **M7 — release:** deploy a public relay, Docker/Caddy, README, reproducible signed release builds.
 
 ### 14.2 README must cover
 - Integrating a site or app: adding the connector to a wagmi config (the one-line case), wrapping the provider for other stacks, or calling the SDK directly; what the user sees; server-side `verifyConnection` for login.

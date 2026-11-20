@@ -1,8 +1,8 @@
 # Blox demo (wagmi)
 
 A static wagmi site with the Blox connector, built from the SDK's source. It connects to a
-phone through the public relay and sends on Sepolia. Hosted at https://relay.example.com/demo/
-(DEPLOY.md, "The demo site").
+phone through a relay and sends on Sepolia. DEPLOY.md ("The demo site") hosts it at `/demo/` on
+the relay's own site.
 
 ```sh
 cd sdk/js && deno task demo                  # demo/dist: index.html and demo.js
@@ -22,7 +22,7 @@ Query options for local runs:
 | Option | Effect |
 |---|---|
 | `?anvil` or `?anvil=http://host:8545` | anvil (chain 31337) instead of Sepolia |
-| `?relay=http://localhost:8080` | another relay (default `https://relay.example.com`) |
+| `?relay=http://localhost:8080` | another relay (default: the site serving the page) |
 | `?mock` | print the `BLOX:` string in the log instead of drawing it, for the mock keystore |
 
 With everything local (RUN.md): `scripts/local-services.sh`, then open

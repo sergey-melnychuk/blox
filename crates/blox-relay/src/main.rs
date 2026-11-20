@@ -1,5 +1,5 @@
 use std::io::IsTerminal;
-use std::net::SocketAddr;
+use std::net::{Ipv4Addr, SocketAddr};
 use std::time::Duration;
 
 use blox_relay::{AppState, Limits, router, sweeper};
@@ -12,9 +12,10 @@ use clap::{ArgAction, Parser};
 #[derive(Parser)]
 #[command(version)]
 struct Args {
-    /// Address to listen on. Put TLS (e.g. Caddy) in front of it.
+    /// Address to listen on, `host:port` (a name or an address), or `:port` for every
+    /// interface. Put TLS (e.g. Caddy) in front of it.
     #[arg(long, env = "BLOX_LISTEN", default_value = "localhost:8080")]
-    listen: SocketAddr,
+    listen: String,
     /// Take the client IP from X-Forwarded-For (only behind a trusted reverse proxy).
     /// The variable takes 1/0, true/false, yes/no or on/off.
     #[arg(long, env = "BLOX_TRUST_PROXY", action = ArgAction::SetTrue,
@@ -80,7 +81,18 @@ async fn main() -> std::io::Result<()> {
     };
     let state = AppState::new(limits, a.trust_proxy);
     tokio::spawn(sweeper(state.clone()));
-    let listener = tokio::net::TcpListener::bind(a.listen).await?;
+    let listener = match a.listen.strip_prefix(':') {
+        Some(port) => {
+            let port: u16 = port.parse().map_err(|_| {
+                std::io::Error::new(
+                    std::io::ErrorKind::InvalidInput,
+                    format!("bad --listen {}", a.listen),
+                )
+            })?;
+            tokio::net::TcpListener::bind((Ipv4Addr::UNSPECIFIED, port)).await?
+        }
+        None => tokio::net::TcpListener::bind(a.listen.as_str()).await?,
+    };
     tracing::info!(listen = %a.listen, trust_proxy = a.trust_proxy, "blox-relay started");
     axum::serve(
         listener,

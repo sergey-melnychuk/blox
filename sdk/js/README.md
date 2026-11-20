@@ -5,11 +5,11 @@ Connect a site or app to a Blox phone keystore (see the repository README and BL
 ```ts
 // wagmi: one import, one connector
 import { blox } from "@blox/sdk/wagmi";
-createConfig({ chains, connectors: [injected(), blox({ name: "Example" })], transports });
+createConfig({ chains, connectors: [injected(), blox({ name: "Example", relay: "https://relay.example.com" })], transports });
 
 // or directly
 import { Blox } from "@blox/sdk";
-const b = new Blox({ name: "Example" });
+const b = new Blox({ name: "Example", relay: "https://relay.example.com" });
 const { account } = await b.connect();
 const { txHash } = await b.send({ chain: 8453, to: "0x…", value: 10n ** 16n });
 ```

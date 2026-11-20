@@ -1,6 +1,6 @@
 # Deploying the relay
 
-How to run the public relay (`relay.example.com`, or your own host) on a Linux server: one
+How to run a public relay (`relay.example.com` below stands for your host) on a Linux server: one
 binary under systemd, Caddy in front for TLS, logs in the journal with rotation. For running
 everything on your own computer, see [RUN.md](RUN.md). The relay itself is specified in
 BLOX.md §8.
@@ -124,7 +124,7 @@ curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' \
 apt update && apt install -y caddy
 ```
 
-Install the Caddyfile, **change the host name** in it if it isn't `relay.example.com`, and load it:
+Install the Caddyfile, **change the host name** in it (`relay.example.com`) to yours, and load it:
 
 ```sh
 install -m 0644 /tmp/Caddyfile /etc/caddy/Caddyfile
@@ -139,7 +139,7 @@ What the Caddyfile does:
   phones and sites wait for messages) go through at once instead of being buffered.
 - **No `log` directive in the site block**, so there is no access log. Adding one
   (`log { output file … }`) records each request's client address, URI (which holds the
-  inbox id) and headers. The public instance at `relay.example.com` keeps such a log.
+  inbox id) and headers.
 - The global `log` block excludes `http.log.error`, `http.handlers.reverse_proxy` and
   `http.stdlib`. Those loggers write the client address and the full URI (which holds an inbox
   id) when a request fails, for example while the relay is restarting. Everything else
@@ -261,14 +261,14 @@ echo 'BLOX:…' > target/local/keystore.in
 The example prints `Connected as 0xf39F…` and a transaction hash. Then
 `--message hello` and `--disconnect` with the same `--relay`.
 
-With the phone: the app, the SDK and the example requester all use `https://relay.example.com`
-by default. Connect from the web demo (below) or the example requester without `--relay` and
-`--print-uri`, and scan the QR code.
+With the phone: connect from the web demo (below), or from the example requester with
+`--relay https://relay.example.com` and without `--print-uri`, and scan the QR code. The app
+asks once whether to use the relay.
 
 ### The demo site
 
-`sdk/js/demo` builds with Deno (no npm) to two static files that work under any path; `relay.example.com/demo/` serves
-them from the relay's own site. Build (local) and copy:
+`sdk/js/demo` builds with Deno (no npm) to two static files that work under any path; serving them at `/demo/` on the relay's
+own site makes that relay the demo's default. Build (local) and copy:
 
 ```sh
 (cd sdk/js && deno task demo)          # demo/dist: index.html and demo.js
@@ -339,7 +339,7 @@ Caddy updates come with `apt upgrade`. After editing the Caddyfile: `caddy valid
 |---|---|
 | `502` from Caddy | The relay isn't running: `systemctl status blox-relay`, `journalctl -u blox-relay`. |
 | `invalid value … for '--trust-proxy'` in the journal | An old relay build: those only accepted `true`/`false`. Use `BLOX_TRUST_PROXY=true`, or upgrade. |
-| Everyone gets `429`, or readers are refused | `BLOX_TRUST_PROXY` isn't set, so every client looks like `localhost` and shares one set of per-IP limits. |
+| Everyone gets `429`, or readers are refused | `BLOX_TRUST_PROXY` isn't set, so every client looks like the proxy (loopback) and shares one set of per-IP limits. |
 | No certificate, TLS errors | DNS doesn't point at the server yet, or port 80/443 is closed: `journalctl -u caddy`. |
 | Requests rejected as expired, or tokens as not yet valid | The server clock is off: `timedatectl`. |
 | Phones or sites see messages only after a delay | Something buffers the event stream: keep `flush_interval -1`, and nothing else (a CDN or another proxy) in between should buffer `text/event-stream`. |
@@ -351,9 +351,10 @@ Caddy updates come with `apt upgrade`. After editing the Caddyfile: `caddy valid
 ```sh
 docker build -f deploy/Dockerfile -t blox-relay .
 docker run -d --name blox-relay --restart unless-stopped \
-    -p localhost:8080:8080 -e BLOX_TRUST_PROXY=1 blox-relay
+    --network host -e BLOX_LISTEN=localhost:8080 -e BLOX_TRUST_PROXY=1 blox-relay
 docker logs -f blox-relay
 ```
 
-Caddy is the same as in section 4. For log rotation with Docker, set the `json-file` driver's
+`--network host` with `BLOX_LISTEN=localhost:8080` keeps the relay on the host's loopback
+interface, where only Caddy reaches it (Linux). Caddy is the same as in section 4. For log rotation with Docker, set the `json-file` driver's
 `max-size`/`max-file` in `/etc/docker/daemon.json`, or use `--log-driver journald`.

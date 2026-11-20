@@ -2,9 +2,9 @@
   "description": "Blox wire format v1 (BLOX.md §4, §5). Binary values are unpadded base64url unless noted.",
   "envelopes": [
     {
-      "envelope": "AQEy1mtAPEOvmKmr5AgpvHHVebdHmDUrJLN7vkd2dfrFUKpitbwUJ71tvWDcLu_rhsH1X_j5j1xJfwM0x8iNT-RuyjQ7kEKS7yBRCzGNV4pq1fITT8sJwTxaP4qjvROaJf41RY6g36fymt1xmJ5ARhAo4W0twVWGfVz0v1joIlhG-HFumo7SvD65MaFFwYH_g7d7wBNH_VQ7n7INjNJqQx6ocpdBXg6a3kyhFnXLOpiSoqSeuMaTVqgVp_K_lGjhUIbG3KaejcpmCRqRG1IeeigiR_-ToM52AAbp4bgu2PCTX913eFI1wI7x2G4jMYuywAKkUkBuNiMupzpesLqoizLrTU7TntzDGDzQrdz9taI8x8nfMRYm-uu6cctZOCiNvDV_FYurNaE_1NaX4dAUxXY2Dy5y8CpfOSIWhAJe-D1wTxFHl4bf4Us-3XgE8zY7pw-3MqAR1iWWcQPyecR0P74zFbOWnCV57G9d0ss3dbf00kTZ-R891LEzuYLkrKK7uSP9qEryik-6kDJSxxw6Y9RDuas1H7FJCpFf9Ec-uo9i3D5VYMJmk8g1Exsr9KmOd502_FC7y7FUkvPle0NOUjVcE6cLtT5JoDneI5c0wnC7X3s17CP94NKlu3nMFY3yU6bRrUU0x--byGd5_N9InLQT_QCKb8IrI_X3OHGBuUOw2LqIHmcg9mFCb1fGwORdehpBDmJfjFcq_zhAQ82hQRI2gKgehQWKGLNo0ELntrI0vIqa3H-67Ry11bvFEFnJ5xXoYdFLygRk7aIr-I5q9t1w7Ub_IEGhBCrTgxx-UGb1jbR12S3U5gjShuUCHDzk4fY8RCY5D0pD4O8q_20UFCFkhbKa8hMg1pkJwE2P2iKgMrRv9vQUdVFV1gnW1W0I54oy44GYVgb5g55_CS650ohwIQrtestmj3Z6PLm_6U7YE_w3I7T80GYZTHV7-V3KPUx4K8AStQP8B7Vi43Qz_oWZY_Lgr7BAZLxrmqUAuSRmQfpAI83GELiAVRvN25D-p29O60yHqJpDw3JzLKEyIgkglUNsmjNcX1_1TDvDCWzldRTThvN4MklvKkCCuJsj-CYCUu4ZStsOyU4P7Otf96n3qHdglCjRWCjQumTG93ihsucPjF6f_HxPGTqLCpLw20neEgrZvQWfg1wLl74gPi0cenHqKFh5FQ5IAypXgIFGB58RwqMC1Ziz6NCbzc1-2bxjfY32_wxoLWYrWQWvzMR4_7vngFY6Yp7lWrbNlDE-ofEHUZGo8zyJRFuNJFXGaS1VFCtVdJ_Ywv7CUCeGi7FHJh7dQWygpS4Hj2KshhJAS1GecP6fit7EkXUG1pHBu4gjPTWPsDeLnXEofl-WBHrBA1EX4S3MNZSHFfQfRF_AqnWL583lu4NHTklQfZdVwE_pBMBwydVtYFrjWweqAF461u3ISjPD7p8UATZqbFHApStQsV7d0uNnCMmXR51XFAI",
+      "envelope": "AQEy1mtAPEOvmKmr5AgpvHHVebdHmDUrJLN7vkd2dfrFUKpitbwUJ71tvWDcLu_rhsH1X_j5j1xJfwM0x8iNT-RuyjQ7kEKS7yBRCzGNV4pq1fITT8sJwTxaP4qjvROaJf41RY6g36fymt1xmJ5ARhAo4W0twVWGfVz0v1joIlhG-HFumo7SvD65MaFFwYH_g7d7wBNH_VQ7n7INjNJqQx6ocpdBXg6a3kyhFnXLOpiSoqSeuMaTVqgVp_K_lGjhUIbG3KaejcpmCRqRG1IeeigiR_-ToM52AAbp4bgu2PCTX913eFI1wI7x2G4jMYuywAKkUkBuNiMupzpesLqoizLrTU7TntzDGDzQrdz9taI8x8nfMRYm-uu6cctZOCiNvDV_FYurNaE_1NaX4dAUxXY2Dy5y8CpfOSIWhAJe-D1wTxFHl4bf4Us-3XgE8zY7pw-NMqAR1iWWcQPyecV0IL5HNPOXuRsg71FZls03QYvEuQX9rSQi5qQgs47ksaGQqFDZog7ajnGN6BUu6gI4Efl9gvQKEv9zLLhD70cYm6dZoChrbIZHhfw_IDMIkYbiXrRE2Hz_y78u7u6-QU80VXAYU6h273BMgD2Tetshgyn2Gm0n_SCZtJymvXHrEN-vXtGGihVvmp_MzGsiq94b6bVIqVH-OsJ6d6WHeGSR-AHnjvPHCH01oD4NSFXdmv4cVxhAEyFIilYqxjVnQ9aqJ1wgkb0Wz0mqQPpmzE_r-_8z-bed4nOqoWCw46uLVRDN6AbhGelumDQPjKYVs6Big_hg_UHfAnKnXz3PrxZ-UDHKhrx1sE7lnj7suf4FVDjM4M88HT4oGQIGp9AjtRNFG0xOh8-89Rs0itdu11Gn-iDeI-lSi7YweUhKgGfs5zAPy6BX5empXRavvbd_PHf6jYV4ZgmLLoVliX5dOevi5DmPNKxsfsSr1GpCG3QojFyRaR0MfsBD4VOMOeIevixmx9H3XtnRj9glZLxrmqUAuSRmQfpAI83GFLarVTvz-7Wq1WJW_kXOst0Y1W5vbqAtKAoq2k02mRdTe1zqXHDEXCGLK2-V2Lcse0J_TEGCt4Yi8zsDOOZGPZlOkAZar4sjq9y97TMjw3baSE7Rumvb9nC8s415kU7WpSsbSH6kWtvwkgKJBFud6gqHIWYpp8YQDg9hB_HqKFh5FQ5IAypXgIFGB58RwqMC1Ziz6NCbzc1-2bxjfY32_wxoLWYrWQWvzMR4_7vngFY6Yp7lWrbNlDE-ofEHUZGo8zyJRFuNJFXGaS1VFCtVdJ_Ywv7CUCeGi7FHJh7dQWygpS4Hj2KshhJAS1GecP6fit7EkXUG1pHBu4gjPTWPsDeLnXEofl-WBHrBA1EX4S3MNZSHFfQfRF_AqnWL583lu4NHTklQfZdVwE_pBMBwydVtYFrjWweqAF461u3ISjPD7p8UATZqbFHApTrQe1GvuSCkGJDU5IprtNk",
       "name": "bind keystore→requester (mode_auth_psk)",
-      "plaintext_utf8": "{\"id\":\"oaGhoaGhoaGhoaGhoaGhoQ\",\"ts\":1762776000,\"type\":\"bind\",\"body\":{\"token\":\"AYqI4910CfGV_VLbLTy6XXLKZwm_HZQSG_N0iAG0D29c4SVgapkyjs0eEQLrTCaU5XvF66TkNpO70G3u6SSv2SCBOXcOqH0XX1ajVGbDTH7My42KkbTuN6Jd9g9bj8mzlDLWa0A8Q6-YqavkCCm8cdV5t0eYNSsks3u-R3Z1-sVQAAAAAGkR08AAAAAAaTlgwBVodHRwczovL2Jsb3guMHhmZi53dGaIiYxPmWo_cfkEfNFZT5kr3CRySHAQgMQFhIdoiT6HBAUvyBEDk9asJseyPpGXBRLUhb6Psrfo27G-VM2Q--0G\",\"account\":\"0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266\",\"statement\":\"Blox connection\\nSite: Example (claimed)\\nSite key: iojj3XQJ8ZX9UtstPLpdcspnCb8dlBIb83SIAbQPb1w\\nKeystore key: gTl3Dqh9F19Wo1Rmw0x-zMuNipG07jeiXfYPW4_Js5Q\\nAccount: 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266\\nNonce: RERERERERERERERERERERA\\nRelay: https://relay.example.com\\nIssued: 2025-11-10T12:00:00Z\\nExpires: 2025-12-10T12:00:00Z\",\"signature\":\"0x00\"}}",
+      "plaintext_utf8": "{\"id\":\"oaGhoaGhoaGhoaGhoaGhoQ\",\"ts\":1762776000,\"type\":\"bind\",\"body\":{\"token\":\"AYqI4910CfGV_VLbLTy6XXLKZwm_HZQSG_N0iAG0D29c4SVgapkyjs0eEQLrTCaU5XvF66TkNpO70G3u6SSv2SCBOXcOqH0XX1ajVGbDTH7My42KkbTuN6Jd9g9bj8mzlDLWa0A8Q6-YqavkCCm8cdV5t0eYNSsks3u-R3Z1-sVQAAAAAGkR08AAAAAAaTlgwBlodHRwczovL3JlbGF5LmV4YW1wbGUuY29t9lpmvuaIfSEqEFOxwkVGd0f-JSS4Ew_0VYxrdhImyddlPEwMF7Dodztpa7c9AKDt_6faHKZvlAHVhipH_vldCg\",\"account\":\"0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266\",\"statement\":\"Blox connection\\nSite: Example (claimed)\\nSite key: iojj3XQJ8ZX9UtstPLpdcspnCb8dlBIb83SIAbQPb1w\\nKeystore key: gTl3Dqh9F19Wo1Rmw0x-zMuNipG07jeiXfYPW4_Js5Q\\nAccount: 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266\\nNonce: RERERERERERERERERERERA\\nRelay: https://relay.example.com\\nIssued: 2025-11-10T12:00:00Z\\nExpires: 2025-12-10T12:00:00Z\",\"signature\":\"0x00\"}}",
       "recipient": "requester"
     },
     {
@@ -30,7 +30,7 @@
   },
   "offer": {
     "label": "Example",
-    "uri": "BLOX:Y80XDH$:RPB1C/IGLAFW59PN1NE71DA7OGWI0O3.WEV90 .1HXBSW4JLDRH6+-PY62QXTL*4M0T.0P2%KL+6KXNH+DELTHAMP34GS8GS8GS8GS8GS8GS8GS8:R8CL6CL6CL6CL6CL6CL6CL6CL6CL6CL6CL6CL6CL6CL6CL66K6G-0$9FQ$DTVD"
+    "uri": "BLOX:Y80XDH$:RPB1C/IGLAFW59PN1NE71DA7OGWI0O3.WEV90 .1HXBSW4JLDRH6+-PY62QXTL*4M0T.0P2%KL+6KXNH+DELTHAMP34GS8GS8GS8GS8GS8GS8GS8:R8CL6CL6CL6CL6CL6CL6CL6CL6CL6CL6CL6CL6CL6CL6CL6NK6ZKEPVDHEFB$CBECP9ERZCUPCBZD9Z8BECP9EB2"
   },
   "padding": [
     {
@@ -52,12 +52,12 @@
     [
       "https://relay.example.com",
       "https://relay.example.com",
-      ""
+      "relay.example.com"
     ],
     [
       "HTTPS://Relay.Example.COM:443/",
       "https://relay.example.com",
-      ""
+      "relay.example.com"
     ],
     [
       "https://r.example.org:8443/relay/",
@@ -84,11 +84,11 @@
     "text": "Blox connection\nSite: Example (claimed)\nSite key: iojj3XQJ8ZX9UtstPLpdcspnCb8dlBIb83SIAbQPb1w\nKeystore key: gTl3Dqh9F19Wo1Rmw0x-zMuNipG07jeiXfYPW4_Js5Q\nAccount: 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266\nNonce: RERERERERERERERERERERA\nRelay: https://relay.example.com\nIssued: 2025-11-10T12:00:00Z\nExpires: 2025-12-10T12:00:00Z"
   },
   "token": {
-    "countersigned": "AYqI4910CfGV_VLbLTy6XXLKZwm_HZQSG_N0iAG0D29c4SVgapkyjs0eEQLrTCaU5XvF66TkNpO70G3u6SSv2SCBOXcOqH0XX1ajVGbDTH7My42KkbTuN6Jd9g9bj8mzlDLWa0A8Q6-YqavkCCm8cdV5t0eYNSsks3u-R3Z1-sVQAAAAAGkR08AAAAAAaTlgwBVodHRwczovL2Jsb3guMHhmZi53dGaIiYxPmWo_cfkEfNFZT5kr3CRySHAQgMQFhIdoiT6HBAUvyBEDk9asJseyPpGXBRLUhb6Psrfo27G-VM2Q--0GPrDyPX823mjhW2CXgTCLOedmYf7gTJrmz8-3v9XfmSaDB8A3lFGvf8UwELrwJGebZDJIqzpqXh6F30ePwhOnCg",
+    "countersigned": "AYqI4910CfGV_VLbLTy6XXLKZwm_HZQSG_N0iAG0D29c4SVgapkyjs0eEQLrTCaU5XvF66TkNpO70G3u6SSv2SCBOXcOqH0XX1ajVGbDTH7My42KkbTuN6Jd9g9bj8mzlDLWa0A8Q6-YqavkCCm8cdV5t0eYNSsks3u-R3Z1-sVQAAAAAGkR08AAAAAAaTlgwBlodHRwczovL3JlbGF5LmV4YW1wbGUuY29t9lpmvuaIfSEqEFOxwkVGd0f-JSS4Ew_0VYxrdhImyddlPEwMF7Dodztpa7c9AKDt_6faHKZvlAHVhipH_vldCtRdA6Oi1805AX5Zj4AYM22aSNHy8l5VaT3SkzajboZu-2dsnD0wJuMn_Q7OxCXUBIM-zmU7KFBBpEdUgvOlkQk",
     "expires_at": 1765368000,
     "issued_at": 1762776000,
-    "keystore_signed": "AYqI4910CfGV_VLbLTy6XXLKZwm_HZQSG_N0iAG0D29c4SVgapkyjs0eEQLrTCaU5XvF66TkNpO70G3u6SSv2SCBOXcOqH0XX1ajVGbDTH7My42KkbTuN6Jd9g9bj8mzlDLWa0A8Q6-YqavkCCm8cdV5t0eYNSsks3u-R3Z1-sVQAAAAAGkR08AAAAAAaTlgwBVodHRwczovL2Jsb3guMHhmZi53dGaIiYxPmWo_cfkEfNFZT5kr3CRySHAQgMQFhIdoiT6HBAUvyBEDk9asJseyPpGXBRLUhb6Psrfo27G-VM2Q--0G",
+    "keystore_signed": "AYqI4910CfGV_VLbLTy6XXLKZwm_HZQSG_N0iAG0D29c4SVgapkyjs0eEQLrTCaU5XvF66TkNpO70G3u6SSv2SCBOXcOqH0XX1ajVGbDTH7My42KkbTuN6Jd9g9bj8mzlDLWa0A8Q6-YqavkCCm8cdV5t0eYNSsks3u-R3Z1-sVQAAAAAGkR08AAAAAAaTlgwBlodHRwczovL3JlbGF5LmV4YW1wbGUuY29t9lpmvuaIfSEqEFOxwkVGd0f-JSS4Ew_0VYxrdhImyddlPEwMF7Dodztpa7c9AKDt_6faHKZvlAHVhipH_vldCg",
     "relay": "https://relay.example.com",
-    "token_id": "lz6S2_sSc4OAZG8Qy8drcYMyfJOUKhL249lOUn6quQg"
+    "token_id": "CUYC3H_dbsQgjRktzUjBRnwBeVvKzcfv9J_ArVC7BFk"
   }
 }

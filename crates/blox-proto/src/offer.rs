@@ -145,7 +145,7 @@ mod tests {
     #[test]
     fn roundtrip_relay_forms() {
         for relay in [
-            relay_url::DEFAULT_RELAY,
+            "https://relay.example.com",
             "https://relay.example.org:8443",
             "http://my-computer.lan:8080",
         ] {
@@ -155,10 +155,10 @@ mod tests {
     }
 
     #[test]
-    fn default_relay_is_compact_and_alphanumeric() {
-        let uri = offer(relay_url::DEFAULT_RELAY, "Example").to_uri();
-        // 113 + 2 + 7 bytes → 183 Base45 characters + the prefix.
-        assert_eq!(uri.len(), 5 + 183, "{} chars", uri.len());
+    fn offer_is_compact_and_alphanumeric() {
+        let uri = offer("https://relay.example.com", "Example").to_uri();
+        // 113 + 2 + 17 (relay.example.com) + 7 bytes → 209 Base45 characters + the prefix.
+        assert_eq!(uri.len(), 5 + 209, "{} chars", uri.len());
         assert!(
             uri.bytes()
                 .all(|c| b"0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ $%*+-./:".contains(&c))
@@ -167,14 +167,14 @@ mod tests {
 
     #[test]
     fn label_truncated_on_char_boundary() {
-        let o = offer(relay_url::DEFAULT_RELAY, &"é".repeat(40));
+        let o = offer("https://relay.example.com", &"é".repeat(40));
         assert_eq!(o.label.len(), 32);
         assert_eq!(Offer::from_uri(&o.to_uri()).unwrap().label, o.label);
     }
 
     #[test]
     fn rejects_malformed() {
-        let uri = offer(relay_url::DEFAULT_RELAY, "x").to_uri();
+        let uri = offer("https://relay.example.com", "x").to_uri();
         assert!(Offer::from_uri("blox:abc").is_err());
         assert!(Offer::from_uri(&uri[..uri.len() - 3]).is_err());
         assert!(Offer::from_uri(&format!("{uri}00")).is_err());

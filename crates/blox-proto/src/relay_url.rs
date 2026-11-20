@@ -2,8 +2,6 @@
 
 use crate::{Error, Result};
 
-pub const DEFAULT_RELAY: &str = "https://relay.example.com";
-
 /// Normalizes a relay URL: lowercase scheme and host, no default port, no trailing slash.
 /// Query strings, fragments and user info are refused.
 pub fn normalize(url: &str) -> Result<String> {
@@ -55,20 +53,16 @@ pub fn normalize(url: &str) -> Result<String> {
     Ok(out)
 }
 
-/// The relay as written in the QR code: `""` for the default, `host[:port][/path]` for
-/// HTTPS, and the full URL for plain HTTP (debug only).
+/// The relay as written in the QR code: `host[:port][/path]` for HTTPS, and the full URL for
+/// plain HTTP (debug only).
 pub fn to_qr_field(normalized: &str) -> &str {
-    if normalized == DEFAULT_RELAY {
-        ""
-    } else {
-        normalized.strip_prefix("https://").unwrap_or(normalized)
-    }
+    normalized.strip_prefix("https://").unwrap_or(normalized)
 }
 
 /// Resolves the QR code's relay field to a normalized URL.
 pub fn from_qr_field(field: &str) -> Result<String> {
     match field {
-        "" => Ok(DEFAULT_RELAY.to_owned()),
+        "" => Err(Error::Malformed("relay url")),
         f if f.starts_with("http://") => normalize(f),
         f if f.contains("://") => Err(Error::Malformed("relay url")),
         f => normalize(&format!("https://{f}")),
@@ -89,7 +83,10 @@ mod tests {
     fn normalizes() {
         for (input, want) in [
             ("https://relay.example.com", "https://relay.example.com"),
-            ("HTTPS://Relay.Example.COM:443/", "https://relay.example.com"),
+            (
+                "HTTPS://Relay.Example.COM:443/",
+                "https://relay.example.com",
+            ),
             (
                 "https://r.example.org:8443/relay/",
                 "https://r.example.org:8443/relay",
@@ -119,15 +116,22 @@ mod tests {
     #[test]
     fn qr_field_roundtrip() {
         for url in [
-            DEFAULT_RELAY,
+            "https://relay.example.com",
             "https://r.example.org:8443/relay",
             "http://my-computer.lan:8080",
         ] {
             assert_eq!(from_qr_field(to_qr_field(url)).unwrap(), url);
         }
-        assert_eq!(to_qr_field(DEFAULT_RELAY), "");
+        assert_eq!(
+            to_qr_field("https://relay.example.com"),
+            "relay.example.com"
+        );
+        assert!(from_qr_field("").is_err());
         assert!(from_qr_field("ftp://x").is_err());
-        assert_eq!(host("http://my-computer.lan:8080/p"), "my-computer.lan:8080");
-        assert_eq!(host(DEFAULT_RELAY), "relay.example.com");
+        assert_eq!(
+            host("http://my-computer.lan:8080/p"),
+            "my-computer.lan:8080"
+        );
+        assert_eq!(host("https://relay.example.com"), "relay.example.com");
     }
 }
